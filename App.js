@@ -1,20 +1,68 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Provider as PaperProvider } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+import HomeScreen from './screens/HomeScreen';
+import ExpenseScreen from './screens/ExpenseScreen';
+import BudgetScreen from './screens/BudgetScreen';
+import AnalyticsScreen from './screens/AnalyticsScreen';
+
+const Tab = createBottomTabNavigator();
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <PaperProvider>
+      <NavigationContainer>
+        <Tab.Navigator
+          screenOptions={{
+            tabBarActiveTintColor: '#6200ee',
+            tabBarInactiveTintColor: 'gray',
+            headerStyle: {
+              backgroundColor: '#6200ee',
+            },
+            headerTintColor: '#fff',
+          }}
+        >
+          <Tab.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => (
+                <MaterialCommunityIcons name="home" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="Expenses"
+            component={ExpenseScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => (
+                <MaterialCommunityIcons name="cash" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="Budget"
+            component={BudgetScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => (
+                <MaterialCommunityIcons name="chart-pie" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="Analytics"
+            component={AnalyticsScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => (
+                <MaterialCommunityIcons name="chart-line" size={size} color={color} />
+              ),
+            }}
+          />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </PaperProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
