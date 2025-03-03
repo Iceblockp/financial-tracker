@@ -1,8 +1,9 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Provider as PaperProvider } from 'react-native-paper';
+import { Provider as PaperProvider, MD3LightTheme, adaptNavigationTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { DefaultTheme as NavigationDefaultTheme } from '@react-navigation/native';
 
 import HomeScreen from './screens/HomeScreen';
 import ExpenseScreen from './screens/ExpenseScreen';
@@ -11,18 +12,51 @@ import AnalyticsScreen from './screens/AnalyticsScreen';
 
 const Tab = createBottomTabNavigator();
 
+const theme = {
+  ...MD3LightTheme,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: '#6200ee',
+    secondary: '#03dac6',
+    error: '#b00020',
+  },
+  roundness: 2,
+  animation: {
+    scale: 1.0,
+  },
+};
+
+const { LightTheme } = adaptNavigationTheme({
+  reactNavigationLight: NavigationDefaultTheme,
+  materialLight: theme,
+});
+
 export default function App() {
   return (
-    <PaperProvider>
-      <NavigationContainer>
+    <PaperProvider theme={theme}>
+      <NavigationContainer theme={LightTheme}>
         <Tab.Navigator
           screenOptions={{
-            tabBarActiveTintColor: '#6200ee',
+            tabBarActiveTintColor: theme.colors.primary,
             tabBarInactiveTintColor: 'gray',
             headerStyle: {
-              backgroundColor: '#6200ee',
+              backgroundColor: theme.colors.primary,
             },
             headerTintColor: '#fff',
+            tabBarStyle: {
+              paddingVertical: 5,
+              borderTopLeftRadius: 15,
+              borderTopRightRadius: 15,
+              backgroundColor: '#fff',
+              position: 'absolute',
+              height: 60,
+            },
+            tabBarLabelStyle: {
+              paddingBottom: 5,
+            },
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
           }}
         >
           <Tab.Screen

@@ -1,78 +1,148 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Text, Button, TextInput, Card, Chip, IconButton, Menu, Searchbar } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import RecurringTransactions from '../components/RecurringTransactions';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
+import {
+  Text,
+  Button,
+  TextInput,
+  Card,
+  Chip,
+  IconButton,
+  Menu,
+  Searchbar,
+  Portal,
+  Modal,
+} from "react-native-paper";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import RecurringTransactions from "../components/RecurringTransactions";
+import CategoryManager from "../components/CategoryManager";
+import { useIsFocused } from "@react-navigation/native";
 
 const ExpenseScreen = () => {
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
+  const isFocused = useIsFocused();
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
   const [expenses, setExpenses] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('date');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("date");
+  const [sortOrder, setSortOrder] = useState("desc");
   const [menuVisible, setMenuVisible] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
 
-  const predefinedCategories = [
-    'Food',
-    'Transport',
-    'Shopping',
-    'Bills',
-    'Entertainment',
-    'Health',
-  ];
+  const [availableCategories, setAvailableCategories] = useState([
+    "Food",
+    "Transport",
+    "Shopping",
+    "Bills",
+    "Entertainment",
+    "Health",
+  ]);
 
-  const quickAddShortcuts = [
-    { amount: 500, description: 'Tea Shop', category: 'Food' },
-    { amount: 2000, description: 'Lunch', category: 'Food' },
-    { amount: 1000, description: 'Bus Fare', category: 'Transport' },
-    { amount: 3000, description: 'Taxi', category: 'Transport' },
-  ];
+  const [quickAddShortcuts, setQuickAddShortcuts] = useState([]);
+  const [editingShortcut, setEditingShortcut] = useState(null);
+  const [shortcutModalVisible, setShortcutModalVisible] = useState(false);
+  const [newShortcut, setNewShortcut] = useState({
+    amount: "",
+    description: "",
+    category: "",
+  });
 
   useEffect(() => {
-    loadExpenses();
+    loadQuickAddShortcuts();
   }, []);
+
+  const loadQuickAddShortcuts = async () => {
+    try {
+      const savedShortcuts = await AsyncStorage.getItem("quickAddShortcuts");
+      if (savedShortcuts) {
+        setQuickAddShortcuts(JSON.parse(savedShortcuts));
+      }
+    } catch (error) {
+      console.error("Error loading shortcuts:", error);
+    }
+  };
+
+  const saveQuickAddShortcuts = async (shortcuts) => {
+    try {
+      await AsyncStorage.setItem(
+        "quickAddShortcuts",
+        JSON.stringify(shortcuts)
+      );
+    } catch (error) {
+      console.error("Error saving shortcuts:", error);
+    }
+  };
+
+  useEffect(() => {
+    const loadCustomCategories = async () => {
+      try {
+        const savedCategories = await AsyncStorage.getItem("customCategories");
+        if (savedCategories) {
+          const customCategories = JSON.parse(savedCategories);
+          setAvailableCategories((prevCategories) => [
+            "Food",
+            "Transport",
+            "Shopping",
+            "Bills",
+            "Entertainment",
+            "Health",
+            ...customCategories,
+          ]);
+        }
+      } catch (error) {
+        console.error("Error loading custom categories:", error);
+      }
+    };
+    loadCustomCategories();
+    loadExpenses();
+  }, [isFocused]);
 
   const loadExpenses = async () => {
     try {
-      const savedExpenses = await AsyncStorage.getItem('expenses');
+      const savedExpenses = await AsyncStorage.getItem("expenses");
       if (savedExpenses) {
         setExpenses(JSON.parse(savedExpenses));
       }
     } catch (error) {
-      console.error('Error loading expenses:', error);
+      console.error("Error loading expenses:", error);
     }
   };
 
   const saveExpenses = async (updatedExpenses) => {
     try {
-      await AsyncStorage.setItem('expenses', JSON.stringify(updatedExpenses));
+      await AsyncStorage.setItem("expenses", JSON.stringify(updatedExpenses));
     } catch (error) {
-      console.error('Error saving expenses:', error);
+      console.error("Error saving expenses:", error);
     }
   };
 
   const updateBudgetSpent = async (category, amount, isAdd = true) => {
     try {
-      const savedBudgets = await AsyncStorage.getItem('budgets');
+      const savedBudgets = await AsyncStorage.getItem("budgets");
       if (savedBudgets) {
         const budgets = JSON.parse(savedBudgets);
-        const updatedBudgets = budgets.map(budget => {
+        const updatedBudgets = budgets.map((budget) => {
           if (budget.category === category) {
             const currentSpent = budget.spent || 0;
             return {
               ...budget,
-              spent: isAdd ? currentSpent + amount : Math.max(0, currentSpent - amount)
+              spent: isAdd
+                ? currentSpent + amount
+                : Math.max(0, currentSpent - amount),
             };
           }
           return budget;
         });
-        await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
+        await AsyncStorage.setItem("budgets", JSON.stringify(updatedBudgets));
       }
     } catch (error) {
-      console.error('Error updating budget:', error);
+      console.error("Error updating budget:", error);
     }
   };
 
@@ -89,9 +159,57 @@ const ExpenseScreen = () => {
       setExpenses(updatedExpenses);
       await saveExpenses(updatedExpenses);
       await updateBudgetSpent(category, parseFloat(amount));
-      setAmount('');
-      setDescription('');
-      setCategory('');
+      setAmount("");
+      setDescription("");
+      setCategory("");
+    }
+  };
+
+  const handleDeleteShortcut = (shortcutId) => {
+    Alert.alert(
+      "Delete Shortcut",
+      "Are you sure you want to delete this shortcut?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const updatedShortcuts = quickAddShortcuts.filter(
+              (s) => s.id !== shortcutId
+            );
+            setQuickAddShortcuts(updatedShortcuts);
+            await saveQuickAddShortcuts(updatedShortcuts);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSaveShortcut = async () => {
+    if (newShortcut.amount && newShortcut.description && newShortcut.category) {
+      const shortcutData = {
+        amount: parseFloat(newShortcut.amount),
+        description: newShortcut.description,
+        category: newShortcut.category,
+        usageCount: 0,
+      };
+
+      let updatedShortcuts;
+      if (editingShortcut) {
+        updatedShortcuts = quickAddShortcuts.map((s) =>
+          s.id === editingShortcut.id ? { ...s, ...shortcutData } : s
+        );
+      } else {
+        shortcutData.id = Date.now().toString();
+        updatedShortcuts = [...quickAddShortcuts, shortcutData];
+      }
+
+      setQuickAddShortcuts(updatedShortcuts);
+      await saveQuickAddShortcuts(updatedShortcuts);
+      setShortcutModalVisible(false);
+      setNewShortcut({ amount: "", description: "", category: "" });
+      setEditingShortcut(null);
     }
   };
 
@@ -107,14 +225,28 @@ const ExpenseScreen = () => {
     setExpenses(updatedExpenses);
     await saveExpenses(updatedExpenses);
     await updateBudgetSpent(shortcut.category, shortcut.amount);
+
+    // Update shortcut usage count
+    const updatedShortcuts = quickAddShortcuts.map((s) => {
+      if (s.id === shortcut.id) {
+        return { ...s, usageCount: (s.usageCount || 0) + 1 };
+      }
+      return s;
+    });
+    setQuickAddShortcuts(updatedShortcuts);
+    await saveQuickAddShortcuts(updatedShortcuts);
   };
 
   const handleUpdateExpense = async () => {
     if (editingExpense && amount && description && category) {
       // First subtract the old amount from the old category's budget
-      await updateBudgetSpent(editingExpense.category, editingExpense.amount, false);
-      
-      const updatedExpenses = expenses.map(exp =>
+      await updateBudgetSpent(
+        editingExpense.category,
+        editingExpense.amount,
+        false
+      );
+
+      const updatedExpenses = expenses.map((exp) =>
         exp.id === editingExpense.id
           ? {
               ...exp,
@@ -126,14 +258,14 @@ const ExpenseScreen = () => {
       );
       setExpenses(updatedExpenses);
       await saveExpenses(updatedExpenses);
-      
+
       // Then add the new amount to the new category's budget
       await updateBudgetSpent(category, parseFloat(amount));
-      
+
       setEditingExpense(null);
-      setAmount('');
-      setDescription('');
-      setCategory('');
+      setAmount("");
+      setDescription("");
+      setCategory("");
     }
   };
 
@@ -145,23 +277,29 @@ const ExpenseScreen = () => {
   };
 
   const handleDeleteExpense = async (expenseId) => {
-    const expenseToDelete = expenses.find(exp => exp.id === expenseId);
+    const expenseToDelete = expenses.find((exp) => exp.id === expenseId);
     if (!expenseToDelete) return;
 
     Alert.alert(
-      'Delete Expense',
-      'Are you sure you want to delete this expense?',
+      "Delete Expense",
+      "Are you sure you want to delete this expense?",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Delete',
-          style: 'destructive',
+          text: "Delete",
+          style: "destructive",
           onPress: async () => {
             // First update the budget by subtracting the expense amount
-            await updateBudgetSpent(expenseToDelete.category, expenseToDelete.amount, false);
-            
+            await updateBudgetSpent(
+              expenseToDelete.category,
+              expenseToDelete.amount,
+              false
+            );
+
             // Then remove the expense from the list
-            const updatedExpenses = expenses.filter(exp => exp.id !== expenseId);
+            const updatedExpenses = expenses.filter(
+              (exp) => exp.id !== expenseId
+            );
             setExpenses(updatedExpenses);
             await saveExpenses(updatedExpenses);
           },
@@ -172,7 +310,7 @@ const ExpenseScreen = () => {
 
   const handleSort = (field) => {
     setSortBy(field);
-    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     setMenuVisible(false);
   };
 
@@ -181,36 +319,48 @@ const ExpenseScreen = () => {
     const thisMonth = today.getMonth();
     const thisYear = today.getFullYear();
 
-    const monthlyExpenses = expenses.filter(expense => {
+    const monthlyExpenses = expenses.filter((expense) => {
       const expenseDate = new Date(expense.date);
-      return expenseDate.getMonth() === thisMonth && expenseDate.getFullYear() === thisYear;
+      return (
+        expenseDate.getMonth() === thisMonth &&
+        expenseDate.getFullYear() === thisYear
+      );
     });
 
-    const totalMonthly = monthlyExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const totalMonthly = monthlyExpenses.reduce(
+      (sum, expense) => sum + expense.amount,
+      0
+    );
     const categoryTotals = {};
-    monthlyExpenses.forEach(expense => {
-      categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + expense.amount;
+    monthlyExpenses.forEach((expense) => {
+      categoryTotals[expense.category] =
+        (categoryTotals[expense.category] || 0) + expense.amount;
     });
 
     return {
       totalMonthly,
       categoryTotals,
-      count: monthlyExpenses.length
+      count: monthlyExpenses.length,
     };
   };
 
   const statistics = calculateStatistics();
 
   const filteredAndSortedExpenses = expenses
-    .filter(expense =>
-      (expense.description?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (expense.category?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+    .filter(
+      (expense) =>
+        (expense.description?.toLowerCase() || "").includes(
+          searchQuery.toLowerCase()
+        ) ||
+        (expense.category?.toLowerCase() || "").includes(
+          searchQuery.toLowerCase()
+        )
     )
     .sort((a, b) => {
-      const modifier = sortOrder === 'asc' ? 1 : -1;
-      if (sortBy === 'date') {
+      const modifier = sortOrder === "asc" ? 1 : -1;
+      if (sortBy === "date") {
         return modifier * (new Date(a.date) - new Date(b.date));
-      } else if (sortBy === 'amount') {
+      } else if (sortBy === "amount") {
         return modifier * (a.amount - b.amount);
       }
       return 0;
@@ -220,19 +370,69 @@ const ExpenseScreen = () => {
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.quickAddContainer}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Quick Add</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.shortcutsScroll}>
-            {quickAddShortcuts.map((shortcut, index) => (
-              <TouchableOpacity key={index} onPress={() => handleQuickAdd(shortcut)}>
-                <Card style={styles.shortcutCard}>
+          <Text variant="titleMedium" style={styles.sectionTitle}>
+            Quick Add
+          </Text>
+          <View>
+            <Button
+              mode="outlined"
+              onPress={() => {
+                setEditingShortcut(null);
+                setNewShortcut({ amount: "", description: "", category: "" });
+                setShortcutModalVisible(true);
+              }}
+              style={styles.addShortcutButton}
+            >
+              Add Quick Shortcut
+            </Button>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.shortcutsScroll}
+            >
+              {quickAddShortcuts.map((shortcut, index) => (
+                <Card key={shortcut.id} style={styles.shortcutCard}>
                   <Card.Content>
                     <Text variant="titleMedium">{shortcut.description}</Text>
-                    <Text variant="bodyMedium">MMK {shortcut.amount.toLocaleString()}</Text>
+                    <Text variant="bodyMedium">
+                      MMK {shortcut.amount.toLocaleString()}
+                    </Text>
+                    <Text variant="bodySmall">{shortcut.category}</Text>
+                    <View style={styles.usageIndicator}>
+                      <Text variant="bodySmall" style={styles.usageCount}>
+                        Used: {shortcut.usageCount || 0} times
+                      </Text>
+                    </View>
                   </Card.Content>
+                  <Card.Actions>
+                    <IconButton
+                      icon="pencil"
+                      size={20}
+                      onPress={() => {
+                        setEditingShortcut(shortcut);
+                        setNewShortcut({
+                          amount: shortcut.amount.toString(),
+                          description: shortcut.description,
+                          category: shortcut.category,
+                        });
+                        setShortcutModalVisible(true);
+                      }}
+                    />
+                    <IconButton
+                      icon="delete"
+                      size={20}
+                      onPress={() => handleDeleteShortcut(shortcut.id)}
+                    />
+                    <IconButton
+                      icon="plus"
+                      size={20}
+                      onPress={() => handleQuickAdd(shortcut)}
+                    />
+                  </Card.Actions>
                 </Card>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+              ))}
+            </ScrollView>
+          </View>
         </View>
 
         <View style={styles.inputContainer}>
@@ -249,11 +449,12 @@ const ExpenseScreen = () => {
             onChangeText={setDescription}
             style={styles.input}
           />
+          <CategoryManager onCategoriesChange={setAvailableCategories} />
           <View style={styles.categoriesContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {predefinedCategories.map((cat) => (
+              {availableCategories.map((cat, index) => (
                 <Chip
-                  key={cat}
+                  key={`${cat}-${index}`}
                   selected={category === cat}
                   onPress={() => setCategory(cat)}
                   style={styles.categoryChip}
@@ -268,7 +469,7 @@ const ExpenseScreen = () => {
             onPress={editingExpense ? handleUpdateExpense : handleAddExpense}
             style={styles.button}
           >
-            {editingExpense ? 'Update Expense' : 'Add Expense'}
+            {editingExpense ? "Update Expense" : "Add Expense"}
           </Button>
         </View>
 
@@ -292,8 +493,8 @@ const ExpenseScreen = () => {
               </Button>
             }
           >
-            <Menu.Item onPress={() => handleSort('date')} title="Date" />
-            <Menu.Item onPress={() => handleSort('amount')} title="Amount" />
+            <Menu.Item onPress={() => handleSort("date")} title="Date" />
+            <Menu.Item onPress={() => handleSort("amount")} title="Amount" />
           </Menu>
         </View>
 
@@ -314,7 +515,9 @@ const ExpenseScreen = () => {
             <Card key={expense.id} style={styles.expenseCard}>
               <Card.Content>
                 <Text variant="titleMedium">{expense.description}</Text>
-                <Text variant="bodyMedium">MMK {(expense.amount || 0).toLocaleString()}</Text>
+                <Text variant="bodyMedium">
+                  MMK {(expense.amount || 0).toLocaleString()}
+                </Text>
                 <Text variant="bodySmall">{expense.category}</Text>
                 <Text variant="bodySmall">
                   {new Date(expense.date).toLocaleDateString()}
@@ -333,16 +536,96 @@ const ExpenseScreen = () => {
             </Card>
           ))}
         </View>
+
+        <Portal>
+          <Modal
+            animationType="slide"
+            visible={shortcutModalVisible}
+            onDismiss={() => {
+              setShortcutModalVisible(false);
+              setNewShortcut({ amount: "", description: "", category: "" });
+              setEditingShortcut(null);
+            }}
+            contentContainerStyle={styles.modalContainer}
+          >
+            <ScrollView>
+              <Text variant="titleLarge" style={styles.modalTitle}>
+                {editingShortcut ? "Edit Shortcut" : "New Quick Shortcut"}
+              </Text>
+
+              <TextInput
+                label="Amount (MMK)"
+                value={newShortcut.amount.toString()}
+                onChangeText={(text) =>
+                  setNewShortcut({ ...newShortcut, amount: text })
+                }
+                keyboardType="numeric"
+                style={styles.input}
+              />
+
+              <TextInput
+                label="Description"
+                value={newShortcut.description}
+                onChangeText={(text) =>
+                  setNewShortcut({ ...newShortcut, description: text })
+                }
+                style={styles.input}
+              />
+
+              <View style={styles.categoriesContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {availableCategories.map((cat) => (
+                    <Chip
+                      key={cat}
+                      selected={newShortcut.category === cat}
+                      onPress={() =>
+                        setNewShortcut({ ...newShortcut, category: cat })
+                      }
+                      style={styles.categoryChip}
+                    >
+                      {cat}
+                    </Chip>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <Button
+                mode="contained"
+                onPress={handleSaveShortcut}
+                style={styles.submitButton}
+              >
+                {editingShortcut ? "Update Shortcut" : "Add Shortcut"}
+              </Button>
+            </ScrollView>
+          </Modal>
+        </Portal>
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  addShortcutButton: {
+    marginBottom: 16,
+  },
+  modalContainer: {
+    backgroundColor: "white",
+    padding: 20,
+    margin: 20,
+    borderRadius: 8,
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  submitButton: {
+    marginTop: 16,
+  },
   filterContainer: {
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   searchBar: {
     flex: 1,
@@ -353,31 +636,63 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   scrollView: {
     flex: 1,
   },
   quickAddContainer: {
+    marginBottom: 16,
+    backgroundColor: "#fff",
     padding: 16,
+    borderRadius: 15,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   sectionTitle: {
     marginBottom: 12,
   },
   shortcutsScroll: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 16,
+    paddingBottom: 8,
   },
   shortcutCard: {
     marginRight: 12,
-    minWidth: 120,
+    minWidth: 160,
+    position: "relative",
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    backgroundColor: "#fff",
+  },
+  usageIndicator: {
+    marginTop: 8,
+    backgroundColor: "#f0f0f0",
+    padding: 4,
+    borderRadius: 4,
+  },
+  usageCount: {
+    fontSize: 12,
+    color: "#666",
+    textAlign: "center",
   },
   inputContainer: {
     padding: 16,
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    backgroundColor: "#fff",
+    borderRadius: 15,
     margin: 16,
-    elevation: 2,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   input: {
     marginBottom: 12,

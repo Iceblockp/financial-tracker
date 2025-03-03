@@ -270,10 +270,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+    paddingBottom: 80,
   },
   card: {
     margin: 16,
     elevation: 4,
+    borderRadius: 15,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   title: {
     textAlign: "center",
@@ -286,7 +293,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 16,
     backgroundColor: "#f8f9fa",
-    borderRadius: 8,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
   },
   insightTitle: {
     marginBottom: 16,
@@ -325,8 +337,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   chart: {
-    marginVertical: 8,
+    marginVertical: 12,
     borderRadius: 16,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.23,
+    shadowRadius: 2.62,
+    backgroundColor: "#fff",
   },
 });
 

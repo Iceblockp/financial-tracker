@@ -8,6 +8,7 @@ import {
   ProgressBar,
   Chip,
 } from "react-native-paper";
+import CategoryManager from "../components/CategoryManager";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 
@@ -16,22 +17,102 @@ const BudgetScreen = () => {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [budgets, setBudgets] = useState([]);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [recommendations, setRecommendations] = useState([]);
 
-  const predefinedCategories = [
+  const [availableCategories, setAvailableCategories] = useState([
     "Food",
     "Transport",
     "Shopping",
     "Bills",
     "Entertainment",
     "Health",
-  ];
+  ]);
 
   useEffect(() => {
     if (isFocused) {
       loadBudgets();
       checkExpensesChanges();
+      loadRecommendations();
     }
   }, [isFocused]);
+
+  const loadRecommendations = async () => {
+    const recommendations = await calculateBudgetRecommendations();
+    setRecommendations(recommendations);
+  };
+
+  const calculateBudgetRecommendations = async () => {
+    try {
+      const savedExpenses = await AsyncStorage.getItem("expenses");
+      const expenses = savedExpenses ? JSON.parse(savedExpenses) : [];
+
+      // Get last 3 months of expenses
+      const today = new Date();
+      const threeMonthsAgo = new Date(
+        today.getFullYear(),
+        today.getMonth() - 3,
+        1
+      );
+
+      const recentExpenses = expenses.filter(
+        (expense) => new Date(expense.date) >= threeMonthsAgo
+      );
+
+      // Calculate average monthly spending by category
+      const categoryTotals = {};
+      const categoryCounts = {};
+
+      recentExpenses.forEach((expense) => {
+        if (!categoryTotals[expense.category]) {
+          categoryTotals[expense.category] = 0;
+          categoryCounts[expense.category] = 0;
+        }
+        categoryTotals[expense.category] += expense.amount;
+        categoryCounts[expense.category]++;
+      });
+
+      // Calculate recommendations
+      const recommendations = Object.entries(categoryTotals).map(
+        ([category, total]) => ({
+          category,
+          recommendedBudget: Math.ceil((total / 3) * 1.1), // 10% buffer
+          frequency: categoryCounts[category],
+          currentSpending: total / 3,
+        })
+      );
+
+      return recommendations.sort(
+        (a, b) => b.currentSpending - a.currentSpending
+      );
+    } catch (error) {
+      console.error("Error calculating budget recommendations:", error);
+      return [];
+    }
+  };
+
+  const showBudgetAlert = (budget, spent) => {
+    const ratio = spent / budget;
+    const remaining = budget - spent;
+
+    if (ratio >= 0.9) {
+      Alert.alert(
+        "Budget Alert",
+        `You've used ${Math.round(
+          ratio * 100
+        )}% of your ${category} budget!\n\nRemaining: MMK ${remaining.toLocaleString()}`,
+        [{ text: "View Budget", onPress: () => {} }, { text: "OK" }]
+      );
+    } else if (ratio >= 0.75) {
+      Alert.alert(
+        "Budget Warning",
+        `You've used ${Math.round(
+          ratio * 100
+        )}% of your ${category} budget.\n\nRemaining: MMK ${remaining.toLocaleString()}`,
+        [{ text: "OK" }]
+      );
+    }
+  };
 
   const checkExpensesChanges = async () => {
     try {
@@ -59,13 +140,7 @@ const BudgetScreen = () => {
           // Check if spending exceeds budget thresholds
           const spendingRatio = totalSpent / budget.amount;
           if (spendingRatio >= 0.9 && !budget.alertShown) {
-            Alert.alert(
-              "Budget Alert",
-              `You have used ${Math.round(spendingRatio * 100)}% of your ${
-                budget.category
-              } budget!`,
-              [{ text: "OK" }]
-            );
+            showBudgetAlert(budget.amount, totalSpent);
           }
 
           return {
@@ -281,7 +356,7 @@ const BudgetScreen = () => {
           />
           <View style={styles.categoriesContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {predefinedCategories.map((cat) => (
+              {availableCategories.map((cat) => (
                 <Chip
                   key={cat}
                   selected={category === cat}
@@ -293,6 +368,7 @@ const BudgetScreen = () => {
               ))}
             </ScrollView>
           </View>
+          <CategoryManager onCategoriesChange={setAvailableCategories} />
           <Button
             mode="contained"
             onPress={handleAddBudget}
@@ -348,22 +424,101 @@ const BudgetScreen = () => {
             </Card>
           ))}
         </View>
+
+        <Card style={styles.recommendationsCard}>
+          <Card.Content>
+            <View style={styles.recommendationsHeader}>
+              <Text variant="titleMedium">Smart Budget Recommendations</Text>
+              <Button
+                onPress={() => setShowRecommendations(!showRecommendations)}
+              >
+                {showRecommendations ? "Hide" : "Show"}
+              </Button>
+            </View>
+            {showRecommendations && (
+              <View style={styles.recommendationsList}>
+                {recommendations.map((rec) => (
+                  <View key={rec.category} style={styles.recommendationItem}>
+                    <View style={styles.recommendationContent}>
+                      <View style={styles.recommendationInfo}>
+                        <Text variant="bodyLarge" numberOfLines={1} style={styles.categoryText}>{rec.category}</Text>
+                        <Text variant="bodySmall" numberOfLines={1}>
+                          Current: MMK {rec.currentSpending.toLocaleString()}/month
+                        </Text>
+                      </View>
+                      <View style={styles.recommendationDetails}>
+                        <Text variant="bodyMedium" style={styles.recommendedAmount} numberOfLines={1}>
+                          MMK {rec.recommendedBudget.toLocaleString()}
+                        </Text>
+                        <Text variant="bodySmall" numberOfLines={1}>
+                          {rec.frequency} transactions/month
+                        </Text>
+                      </View>
+                    </View>
+                    <Button
+                      mode="contained-tonal"
+                      onPress={() => {
+                        setAmount(rec.recommendedBudget.toString());
+                        setCategory(rec.category);
+                      }}
+                      style={styles.applyButton}
+                    >
+                      Apply
+                    </Button>
+                  </View>
+                ))}
+              </View>
+            )}
+          </Card.Content>
+        </Card>
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  recommendationsCard: {
+    margin: 16,
+    marginTop: 8,
+    elevation: 2,
+  },
+  recommendationsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  recommendationsList: {
+    gap: 8,
+  },
+  recommendationItem: {
+    flexDirection: "column",
+    gap: 8,
+    padding: 12,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+  },
+  recommendedAmount: {
+    color: "#6200ee",
+    fontWeight: "bold",
+  },
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
   scrollView: {
     flex: 1,
+    paddingBottom: 80,
   },
   summaryCard: {
     margin: 16,
-    elevation: 2,
+    elevation: 4,
+    borderRadius: 15,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   summaryTitle: {
     marginBottom: 16,
@@ -372,50 +527,69 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 8,
   },
   summaryProgress: {
+    marginTop: 16,
     height: 8,
     borderRadius: 4,
-    marginTop: 16,
   },
   inputContainer: {
     padding: 16,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    margin: 16,
-    elevation: 2,
   },
   input: {
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  categoriesContainer: {
+    marginBottom: 16,
+  },
+  categoryChip: {
+    marginRight: 8,
+    marginBottom: 8,
   },
   button: {
     marginTop: 8,
   },
   budgetsList: {
     padding: 16,
+    paddingTop: 0,
   },
   budgetCard: {
-    marginBottom: 12,
+    marginBottom: 16,
+    elevation: 2,
+    borderRadius: 8,
   },
   progressBar: {
-    height: 8,
-    borderRadius: 4,
     marginVertical: 8,
-  },
-  categoriesContainer: {
-    marginBottom: 12,
-  },
-  categoryChip: {
-    marginRight: 8,
+    height: 6,
+    borderRadius: 3,
   },
   budgetCardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 8,
-    marginVertical: 8,
+  },
+  recommendationContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flex: 1,
+  },
+  recommendationInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  recommendationDetails: {
+    alignItems: "flex-end",
+  },
+  categoryText: {
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  applyButton: {
+    marginTop: 8,
+    borderRadius: 4,
   },
 });
 

@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Dimensions } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
+  Animated,
+} from "react-native";
 import { Text, Card, Button } from "react-native-paper";
 import { LineChart } from "react-native-chart-kit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -7,12 +13,24 @@ import { useIsFocused } from "@react-navigation/native";
 
 const HomeScreen = ({ navigation }) => {
   const isFocused = useIsFocused();
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+  }, []);
   const [monthlyStats, setMonthlyStats] = useState({
     totalSpent: 0,
     budgetUsage: 0,
     topCategory: "",
     recentExpenses: [],
     spendingData: [0, 0, 0, 0, 0, 0, 0],
+    avgDailySpending: 0,
+    projectedSpending: 0,
+    totalBudget: 0,
   });
 
   useEffect(() => {
@@ -92,12 +110,23 @@ const HomeScreen = ({ navigation }) => {
           .reduce((sum, exp) => sum + exp.amount, 0);
       });
 
+      // Calculate average daily spending
+      const avgDailySpending =
+        totalSpent / new Date(thisYear, thisMonth + 1, 0).getDate();
+
+      // Calculate projected monthly spending
+      const daysInMonth = new Date(thisYear, thisMonth + 1, 0).getDate();
+      const projectedSpending = (avgDailySpending * daysInMonth).toFixed(0);
+
       setMonthlyStats({
         totalSpent,
         budgetUsage,
         topCategory,
         recentExpenses,
         spendingData,
+        avgDailySpending,
+        projectedSpending: parseFloat(projectedSpending),
+        totalBudget,
       });
     } catch (error) {
       console.error("Error loading monthly stats:", error);
@@ -105,155 +134,194 @@ const HomeScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text variant="headlineMedium">Finance Tracker</Text>
-        <Text variant="bodyLarge">
-          Welcome to your personal finance manager
-        </Text>
-      </View>
-
-      <Card style={styles.summaryCard}>
-        <Card.Content>
-          <Text variant="titleLarge" style={styles.cardTitle}>
-            Monthly Summary
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+        <View style={styles.header}>
+          <Text variant="headlineMedium">Finance Tracker</Text>
+          <Text variant="bodyLarge">
+            Welcome to your personal finance manager
           </Text>
-          <Text variant="headlineMedium" style={styles.amount}>
-            MMK {(monthlyStats.totalSpent || 0).toLocaleString()}
-          </Text>
-          <Text variant="bodyMedium">Total Spent This Month</Text>
+        </View>
 
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text variant="bodyMedium">Budget Usage</Text>
-              <Text
-                variant="titleMedium"
-                style={{
-                  color:
-                    monthlyStats.budgetUsage > 90
-                      ? "#FF4444"
-                      : monthlyStats.budgetUsage > 70
-                      ? "#FFA000"
-                      : "#4CAF50",
-                }}
-              >
-                {Math.round(monthlyStats.budgetUsage)}%
-              </Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text variant="bodyMedium">Top Category</Text>
-              <Text variant="titleMedium">{monthlyStats.topCategory}</Text>
-            </View>
-          </View>
-        </Card.Content>
-      </Card>
+        <Card style={styles.summaryCard}>
+          <Card.Content>
+            <Text variant="titleLarge" style={styles.cardTitle}>
+              Monthly Summary
+            </Text>
+            <Text variant="headlineMedium" style={styles.amount}>
+              MMK {(monthlyStats.totalSpent || 0).toLocaleString()}
+            </Text>
+            <Text variant="bodyMedium">Total Spent This Month</Text>
 
-      <Card style={styles.chartCard}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.chartTitle}>
-            Last 7 Days Spending
-          </Text>
-          {(() => {
-            const last7Days = Array.from({ length: 7 }, (_, i) => {
-              const date = new Date();
-              date.setDate(date.getDate() - i);
-              return date.toISOString().split("T")[0];
-            }).reverse();
-
-            return (
-              <LineChart
-                data={{
-                  labels: last7Days.map((date) =>
-                    new Date(date).toLocaleDateString("en-US", {
-                      weekday: "short",
-                    })
-                  ),
-                  datasets: [
-                    {
-                      data: monthlyStats.spendingData,
-                      color: (opacity = 1) => `rgba(98, 0, 238, ${opacity})`,
-                      strokeWidth: 2,
-                    },
-                  ],
-                }}
-                width={Dimensions.get("window").width - 64}
-                height={200}
-                yAxisLabel="MMK "
-                yAxisSuffix=""
-                withDots={true}
-                withInnerLines={true}
-                withOuterLines={true}
-                withVerticalLines={false}
-                withHorizontalLines={true}
-                withVerticalLabels={true}
-                withHorizontalLabels={true}
-                fromZero={true}
-                chartConfig={{
-                  backgroundColor: "#ffffff",
-                  backgroundGradientFrom: "#ffffff",
-                  backgroundGradientTo: "#ffffff",
-                  decimalPlaces: 0,
-                  color: (opacity = 1) => `rgba(98, 0, 238, ${opacity})`,
-                  style: {
-                    borderRadius: 16,
-                  },
-                  propsForDots: {
-                    r: "6",
-                    strokeWidth: "2",
-                    stroke: "#6200ee",
-                  },
-                  propsForLabels: {
-                    fontSize: 10,
-                  },
-                }}
-                bezier
-                style={styles.chart}
-              />
-            );
-          })()}
-        </Card.Content>
-      </Card>
-
-      <Card style={styles.recentCard}>
-        <Card.Content>
-          <View style={styles.recentHeader}>
-            <Text variant="titleMedium">Recent Expenses</Text>
-            <Button onPress={() => navigation.navigate("Expenses")}>
-              View All
-            </Button>
-          </View>
-          {monthlyStats.recentExpenses.map((expense, index) => (
-            <View key={expense.id} style={styles.expenseItem}>
-              <View>
-                <Text variant="bodyLarge">{expense.description}</Text>
-                <Text variant="bodySmall">{expense.category}</Text>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text variant="bodyMedium">Budget Usage</Text>
+                <Text
+                  variant="titleMedium"
+                  style={{
+                    color:
+                      monthlyStats.budgetUsage > 90
+                        ? "#FF4444"
+                        : monthlyStats.budgetUsage > 70
+                        ? "#FFA000"
+                        : "#4CAF50",
+                  }}
+                >
+                  {Math.round(monthlyStats.budgetUsage)}%
+                </Text>
               </View>
-              <Text variant="titleMedium">
-                MMK {expense.amount?.toLocaleString()}
-              </Text>
+              <View style={styles.statItem}>
+                <Text variant="bodyMedium">Top Category</Text>
+                <Text variant="titleMedium">{monthlyStats.topCategory}</Text>
+              </View>
             </View>
-          ))}
-        </Card.Content>
-      </Card>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text variant="bodyMedium">Projected Spending</Text>
+                <Text
+                  variant="titleMedium"
+                  style={{
+                    color:
+                      monthlyStats.projectedSpending > monthlyStats.totalBudget
+                        ? "#FF4444"
+                        : "#4CAF50",
+                  }}
+                >
+                  MMK {monthlyStats.projectedSpending?.toLocaleString()}
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text variant="bodyMedium">Top Category</Text>
+                <Text variant="titleMedium">{monthlyStats.topCategory}</Text>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
+
+        <Card style={styles.chartCard}>
+          <Card.Content>
+            <Text variant="titleMedium" style={styles.chartTitle}>
+              Last 7 Days Spending
+            </Text>
+            {(() => {
+              const last7Days = Array.from({ length: 7 }, (_, i) => {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                return date.toISOString().split("T")[0];
+              }).reverse();
+
+              return (
+                <LineChart
+                  data={{
+                    labels: last7Days.map((date) =>
+                      new Date(date).toLocaleDateString("en-US", {
+                        weekday: "short",
+                      })
+                    ),
+                    datasets: [
+                      {
+                        data: monthlyStats.spendingData,
+                        color: (opacity = 1) => `rgba(98, 0, 238, ${opacity})`,
+                        strokeWidth: 2,
+                      },
+                    ],
+                  }}
+                  width={Dimensions.get("window").width - 64}
+                  height={200}
+                  yAxisLabel="MMK "
+                  yAxisSuffix=""
+                  withDots={true}
+                  withInnerLines={true}
+                  withOuterLines={true}
+                  withVerticalLines={false}
+                  withHorizontalLines={true}
+                  withVerticalLabels={true}
+                  withHorizontalLabels={true}
+                  fromZero={true}
+                  chartConfig={{
+                    backgroundColor: "#ffffff",
+                    backgroundGradientFrom: "#ffffff",
+                    backgroundGradientTo: "#ffffff",
+                    decimalPlaces: 0,
+                    color: (opacity = 1) => `rgba(98, 0, 238, ${opacity})`,
+                    style: {
+                      borderRadius: 16,
+                    },
+                    propsForDots: {
+                      r: "6",
+                      strokeWidth: "2",
+                      stroke: "#6200ee",
+                    },
+                    propsForLabels: {
+                      fontSize: 10,
+                    },
+                  }}
+                  bezier
+                  style={styles.chart}
+                />
+              );
+            })()}
+          </Card.Content>
+        </Card>
+
+        <Card style={styles.recentCard}>
+          <Card.Content>
+            <View style={styles.recentHeader}>
+              <Text variant="titleMedium">Recent Expenses</Text>
+              <Button onPress={() => navigation.navigate("Expenses")}>
+                View All
+              </Button>
+            </View>
+            {monthlyStats.recentExpenses.map((expense, index) => (
+              <View key={expense.id} style={styles.expenseItem}>
+                <View>
+                  <Text variant="bodyLarge">{expense.description}</Text>
+                  <Text variant="bodySmall">{expense.category}</Text>
+                </View>
+                <Text variant="titleMedium">
+                  MMK {expense.amount?.toLocaleString()}
+                </Text>
+              </View>
+            ))}
+          </Card.Content>
+        </Card>
+      </Animated.View>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  content: {
+    flex: 1,
+    paddingBottom: 80,
+  },
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
   header: {
-    padding: 16,
+    padding: 24,
     alignItems: "center",
     backgroundColor: "#fff",
     marginBottom: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   summaryCard: {
     margin: 16,
     marginTop: 0,
     elevation: 4,
+    borderRadius: 15,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   cardTitle: {
     marginBottom: 8,
@@ -274,6 +342,12 @@ const styles = StyleSheet.create({
     margin: 16,
     marginTop: 0,
     elevation: 4,
+    borderRadius: 15,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   chartTitle: {
     marginBottom: 16,
@@ -286,6 +360,12 @@ const styles = StyleSheet.create({
     margin: 16,
     marginTop: 0,
     elevation: 4,
+    borderRadius: 15,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   recentHeader: {
     flexDirection: "row",

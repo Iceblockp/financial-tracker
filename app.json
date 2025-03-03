@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "tracker",
+    "name": "Finance Tracker",
     "slug": "tracker",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,10 +19,18 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.financetracker.app",
+      "versionCode": 1,
+      "permissions": []
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bbbc2869-a1b5-4391-b959-b2110e9d0871"
+      }
     }
   }
 }
