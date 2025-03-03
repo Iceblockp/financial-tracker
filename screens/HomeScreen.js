@@ -3,8 +3,10 @@ import { View, StyleSheet, ScrollView, Dimensions } from "react-native";
 import { Text, Card, Button } from "react-native-paper";
 import { LineChart } from "react-native-chart-kit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useIsFocused } from "@react-navigation/native";
 
 const HomeScreen = ({ navigation }) => {
+  const isFocused = useIsFocused();
   const [monthlyStats, setMonthlyStats] = useState({
     totalSpent: 0,
     budgetUsage: 0,
@@ -15,7 +17,7 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadMonthlyStats();
-  }, []);
+  }, [isFocused]);
 
   const loadMonthlyStats = async () => {
     try {
@@ -78,7 +80,15 @@ const HomeScreen = ({ navigation }) => {
 
       const spendingData = last7Days.map((date) => {
         return expenses
-          .filter((exp) => exp.date.startsWith(date))
+          .filter((exp) => {
+            const expDate = new Date(exp.date);
+            const targetDate = new Date(date);
+            return (
+              expDate.getFullYear() === targetDate.getFullYear() &&
+              expDate.getMonth() === targetDate.getMonth() &&
+              expDate.getDate() === targetDate.getDate()
+            );
+          })
           .reduce((sum, exp) => sum + exp.amount, 0);
       });
 
