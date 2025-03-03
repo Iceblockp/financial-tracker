@@ -1,14 +1,18 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Provider as PaperProvider, MD3LightTheme, adaptNavigationTheme } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { DefaultTheme as NavigationDefaultTheme } from '@react-navigation/native';
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import {
+  Provider as PaperProvider,
+  MD3LightTheme,
+  adaptNavigationTheme,
+} from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { DefaultTheme as NavigationDefaultTheme } from "@react-navigation/native";
 
-import HomeScreen from './screens/HomeScreen';
-import ExpenseScreen from './screens/ExpenseScreen';
-import BudgetScreen from './screens/BudgetScreen';
-import AnalyticsScreen from './screens/AnalyticsScreen';
+import HomeScreen from "./screens/HomeScreen";
+import ExpenseScreen from "./screens/ExpenseScreen";
+import BudgetScreen from "./screens/BudgetScreen";
+import AnalyticsScreen from "./screens/AnalyticsScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -16,9 +20,9 @@ const theme = {
   ...MD3LightTheme,
   colors: {
     ...MD3LightTheme.colors,
-    primary: '#6200ee',
-    secondary: '#03dac6',
-    error: '#b00020',
+    primary: "#6200ee",
+    secondary: "#03dac6",
+    error: "#b00020",
   },
   roundness: 2,
   animation: {
@@ -38,28 +42,28 @@ export default function App() {
         <Tab.Navigator
           screenOptions={{
             tabBarActiveTintColor: theme.colors.primary,
-            tabBarInactiveTintColor: 'gray',
+            tabBarInactiveTintColor: "gray",
             headerStyle: {
               backgroundColor: theme.colors.primary,
             },
-            headerTintColor: '#fff',
+            headerTintColor: "#fff",
             tabBarStyle: {
               paddingVertical: 5,
               borderTopLeftRadius: 15,
               borderTopRightRadius: 15,
-              backgroundColor: '#fff',
-              position: 'absolute',
+              backgroundColor: "#fff",
+              position: "absolute",
               height: 60,
             },
             tabBarLabelStyle: {
               paddingBottom: 5,
             },
             headerTitleStyle: {
-              fontWeight: 'bold',
+              fontWeight: "bold",
             },
           }}
         >
-          <Tab.Screen
+          {/* <Tab.Screen
             name="Home"
             component={HomeScreen}
             options={{
@@ -67,7 +71,7 @@ export default function App() {
                 <MaterialCommunityIcons name="home" size={size} color={color} />
               ),
             }}
-          />
+          /> */}
           <Tab.Screen
             name="Expenses"
             component={ExpenseScreen}
@@ -82,11 +86,15 @@ export default function App() {
             component={BudgetScreen}
             options={{
               tabBarIcon: ({ color, size }) => (
-                <MaterialCommunityIcons name="chart-pie" size={size} color={color} />
+                <MaterialCommunityIcons
+                  name="chart-pie"
+                  size={size}
+                  color={color}
+                />
               ),
             }}
           />
-          <Tab.Screen
+          {/* <Tab.Screen
             name="Analytics"
             component={AnalyticsScreen}
             options={{
@@ -94,7 +102,7 @@ export default function App() {
                 <MaterialCommunityIcons name="chart-line" size={size} color={color} />
               ),
             }}
-          />
+          /> */}
         </Tab.Navigator>
       </NavigationContainer>
     </PaperProvider>
