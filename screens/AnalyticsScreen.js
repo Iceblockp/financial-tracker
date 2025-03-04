@@ -209,56 +209,80 @@ const AnalyticsScreen = () => {
             <Text variant="titleMedium" style={styles.chartTitle}>
               Spending Trend
             </Text>
-            <LineChart
-              data={{
-                labels: labels.length > 0 ? labels : ["No Data"],
-                datasets: [
-                  {
-                    data:
-                      data.length > 0
-                        ? data.map((val) => (isFinite(val) ? val : 0))
-                        : [0],
-                  },
-                ],
-              }}
-              width={Dimensions.get("window").width - 64}
-              height={220}
-              chartConfig={{
-                backgroundColor: "#ffffff",
-                backgroundGradientFrom: "#ffffff",
-                backgroundGradientTo: "#ffffff",
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(54, 162, 235, ${opacity})`,
-                style: {
-                  borderRadius: 16,
-                },
-                propsForDots: {
-                  r: "6",
-                  strokeWidth: "2",
-                  stroke: "#ffa726",
-                },
-              }}
-              bezier
-              style={styles.chart}
-            />
+            {data.length > 0 ? (
+              <View style={styles.chartWrapper}>
+                <LineChart
+                  data={{
+                    labels: labels.length > 0 ? labels : ["No Data"],
+                    datasets: [
+                      {
+                        data: data.map((val) => (isFinite(val) ? val : 0)),
+                      },
+                    ],
+                  }}
+                  width={Dimensions.get("window").width - 64}
+                  height={220}
+                  chartConfig={{
+                    backgroundColor: "#ffffff",
+                    backgroundGradientFrom: "#ffffff",
+                    backgroundGradientTo: "#ffffff",
+                    decimalPlaces: 0,
+                    color: (opacity = 1) => `rgba(54, 162, 235, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    style: {
+                      borderRadius: 16,
+                    },
+                    propsForDots: {
+                      r: "6",
+                      strokeWidth: "2",
+                      stroke: "#ffa726",
+                    },
+                    propsForLabels: {
+                      fontSize: 10,
+                    },
+                  }}
+                  bezier
+                  style={styles.chart}
+                  withInnerLines={false}
+                  withOuterLines={true}
+                  withVerticalLines={false}
+                  withHorizontalLines={true}
+                  withVerticalLabels={true}
+                  withHorizontalLabels={true}
+                  fromZero
+                />
+              </View>
+            ) : (
+              <View style={styles.noDataContainer}>
+                <Text>No data available</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.chartContainer}>
             <Text variant="titleMedium" style={styles.chartTitle}>
               Category Distribution
             </Text>
-            {/* <PieChart
-              data={pieData}
-              width={Dimensions.get("window").width - 64}
-              height={220}
-              chartConfig={{
-                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              }}
-              accessor="amount"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              style={styles.chart}
-            /> */}
+            {pieData && pieData.length > 0 ? (
+              <PieChart
+                data={pieData}
+                width={Dimensions.get("window").width - 64}
+                height={220}
+                chartConfig={{
+                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                }}
+                accessor="amount"
+                backgroundColor="transparent"
+                paddingLeft="15"
+                style={styles.chart}
+                hasLegend={true}
+                center={[Dimensions.get("window").width / 4, 0]}
+              />
+            ) : (
+              <View style={styles.noDataContainer}>
+                <Text style={styles.noDataText}>No expense data available for this period</Text>
+              </View>
+            )}
           </View>
         </Card.Content>
       </Card>
