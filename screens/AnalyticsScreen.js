@@ -209,7 +209,7 @@ const AnalyticsScreen = () => {
             <Text variant="titleMedium" style={styles.chartTitle}>
               Spending Trend
             </Text>
-            {/* <LineChart
+            <LineChart
               data={{
                 labels: labels.length > 0 ? labels : ["No Data"],
                 datasets: [
@@ -240,7 +240,7 @@ const AnalyticsScreen = () => {
               }}
               bezier
               style={styles.chart}
-            /> */}
+            />
           </View>
 
           <View style={styles.chartContainer}>
