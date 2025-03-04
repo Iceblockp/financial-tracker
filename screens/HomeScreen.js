@@ -7,7 +7,7 @@ import {
   Animated,
 } from "react-native";
 import { Text, Card, Button } from "react-native-paper";
-import { LineChart } from "react-native-chart-kit";
+// import { LineChart } from "react-native-chart-kit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 
@@ -211,54 +211,55 @@ const HomeScreen = ({ navigation }) => {
               }).reverse();
 
               return (
-                <LineChart
-                  data={{
-                    labels: last7Days.map((date) =>
-                      new Date(date).toLocaleDateString("en-US", {
-                        weekday: "short",
-                      })
-                    ),
-                    datasets: [
-                      {
-                        data: monthlyStats.spendingData,
-                        color: (opacity = 1) => `rgba(98, 0, 238, ${opacity})`,
-                        strokeWidth: 2,
-                      },
-                    ],
-                  }}
-                  width={Dimensions.get("window").width - 64}
-                  height={200}
-                  yAxisLabel="MMK "
-                  yAxisSuffix=""
-                  withDots={true}
-                  withInnerLines={true}
-                  withOuterLines={true}
-                  withVerticalLines={false}
-                  withHorizontalLines={true}
-                  withVerticalLabels={true}
-                  withHorizontalLabels={true}
-                  fromZero={true}
-                  chartConfig={{
-                    backgroundColor: "#ffffff",
-                    backgroundGradientFrom: "#ffffff",
-                    backgroundGradientTo: "#ffffff",
-                    decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(98, 0, 238, ${opacity})`,
-                    style: {
-                      borderRadius: 16,
-                    },
-                    propsForDots: {
-                      r: "6",
-                      strokeWidth: "2",
-                      stroke: "#6200ee",
-                    },
-                    propsForLabels: {
-                      fontSize: 10,
-                    },
-                  }}
-                  bezier
-                  style={styles.chart}
-                />
+                <></>
+                // <LineChart
+                //   data={{
+                //     labels: last7Days.map((date) =>
+                //       new Date(date).toLocaleDateString("en-US", {
+                //         weekday: "short",
+                //       })
+                //     ),
+                //     datasets: [
+                //       {
+                //         data: monthlyStats.spendingData,
+                //         color: (opacity = 1) => `rgba(98, 0, 238, ${opacity})`,
+                //         strokeWidth: 2,
+                //       },
+                //     ],
+                //   }}
+                //   width={Dimensions.get("window").width - 64}
+                //   height={200}
+                //   yAxisLabel="MMK "
+                //   yAxisSuffix=""
+                //   withDots={true}
+                //   withInnerLines={true}
+                //   withOuterLines={true}
+                //   withVerticalLines={false}
+                //   withHorizontalLines={true}
+                //   withVerticalLabels={true}
+                //   withHorizontalLabels={true}
+                //   fromZero={true}
+                //   chartConfig={{
+                //     backgroundColor: "#ffffff",
+                //     backgroundGradientFrom: "#ffffff",
+                //     backgroundGradientTo: "#ffffff",
+                //     decimalPlaces: 0,
+                //     color: (opacity = 1) => `rgba(98, 0, 238, ${opacity})`,
+                //     style: {
+                //       borderRadius: 16,
+                //     },
+                //     propsForDots: {
+                //       r: "6",
+                //       strokeWidth: "2",
+                //       stroke: "#6200ee",
+                //     },
+                //     propsForLabels: {
+                //       fontSize: 10,
+                //     },
+                //   }}
+                //   bezier
+                //   style={styles.chart}
+                // />
               );
             })()}
           </Card.Content>

@@ -209,7 +209,7 @@ const AnalyticsScreen = () => {
             <Text variant="titleMedium" style={styles.chartTitle}>
               Spending Trend
             </Text>
-            <LineChart
+            {/* <LineChart
               data={{
                 labels: labels.length > 0 ? labels : ["No Data"],
                 datasets: [
@@ -240,14 +240,14 @@ const AnalyticsScreen = () => {
               }}
               bezier
               style={styles.chart}
-            />
+            /> */}
           </View>
 
           <View style={styles.chartContainer}>
             <Text variant="titleMedium" style={styles.chartTitle}>
               Category Distribution
             </Text>
-            <PieChart
+            {/* <PieChart
               data={pieData}
               width={Dimensions.get("window").width - 64}
               height={220}
@@ -258,7 +258,7 @@ const AnalyticsScreen = () => {
               backgroundColor="transparent"
               paddingLeft="15"
               style={styles.chart}
-            />
+            /> */}
           </View>
         </Card.Content>
       </Card>

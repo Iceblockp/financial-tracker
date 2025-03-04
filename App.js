@@ -63,7 +63,7 @@ export default function App() {
             },
           }}
         >
-          {/* <Tab.Screen
+          <Tab.Screen
             name="Home"
             component={HomeScreen}
             options={{
@@ -71,7 +71,7 @@ export default function App() {
                 <MaterialCommunityIcons name="home" size={size} color={color} />
               ),
             }}
-          /> */}
+          />
           <Tab.Screen
             name="Expenses"
             component={ExpenseScreen}
@@ -94,15 +94,19 @@ export default function App() {
               ),
             }}
           />
-          {/* <Tab.Screen
+          <Tab.Screen
             name="Analytics"
             component={AnalyticsScreen}
             options={{
               tabBarIcon: ({ color, size }) => (
-                <MaterialCommunityIcons name="chart-line" size={size} color={color} />
+                <MaterialCommunityIcons
+                  name="chart-line"
+                  size={size}
+                  color={color}
+                />
               ),
             }}
-          /> */}
+          />
         </Tab.Navigator>
       </NavigationContainer>
     </PaperProvider>
