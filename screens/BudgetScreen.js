@@ -441,13 +441,24 @@ const BudgetScreen = () => {
                   <View key={rec.category} style={styles.recommendationItem}>
                     <View style={styles.recommendationContent}>
                       <View style={styles.recommendationInfo}>
-                        <Text variant="bodyLarge" numberOfLines={1} style={styles.categoryText}>{rec.category}</Text>
+                        <Text
+                          variant="bodyLarge"
+                          numberOfLines={1}
+                          style={styles.categoryText}
+                        >
+                          {rec.category}
+                        </Text>
                         <Text variant="bodySmall" numberOfLines={1}>
-                          Current: MMK {rec.currentSpending.toLocaleString()}/month
+                          Current: MMK {rec.currentSpending.toLocaleString()}
+                          /month
                         </Text>
                       </View>
                       <View style={styles.recommendationDetails}>
-                        <Text variant="bodyMedium" style={styles.recommendedAmount} numberOfLines={1}>
+                        <Text
+                          variant="bodyMedium"
+                          style={styles.recommendedAmount}
+                          numberOfLines={1}
+                        >
                           MMK {rec.recommendedBudget.toLocaleString()}
                         </Text>
                         <Text variant="bodySmall" numberOfLines={1}>
@@ -479,6 +490,7 @@ const BudgetScreen = () => {
 const styles = StyleSheet.create({
   recommendationsCard: {
     margin: 16,
+    marginBottom: 80,
     marginTop: 8,
     elevation: 2,
   },
@@ -556,13 +568,19 @@ const styles = StyleSheet.create({
   },
   budgetCard: {
     marginBottom: 16,
-    elevation: 2,
-    borderRadius: 8,
+    elevation: 3,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    padding: 8,
   },
   progressBar: {
-    marginVertical: 8,
-    height: 6,
-    borderRadius: 3,
+    marginVertical: 12,
+    height: 8,
+    borderRadius: 4,
   },
   budgetCardFooter: {
     flexDirection: "row",

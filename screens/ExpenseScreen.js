@@ -17,11 +17,13 @@ import {
   Searchbar,
   Portal,
   Modal,
+  SegmentedButtons,
 } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import RecurringTransactions from "../components/RecurringTransactions";
 import CategoryManager from "../components/CategoryManager";
 import { useIsFocused } from "@react-navigation/native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 const ExpenseScreen = () => {
   const isFocused = useIsFocused();
@@ -34,6 +36,12 @@ const ExpenseScreen = () => {
   const [sortOrder, setSortOrder] = useState("desc");
   const [menuVisible, setMenuVisible] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
+  const [expandedSections, setExpandedSections] = useState({
+    searchFilters: false,
+    quickAdd: false,
+    categoryManagement: false,
+    recurringTransactions: false,
+  });
 
   const [availableCategories, setAvailableCategories] = useState([
     "Food",
@@ -101,6 +109,8 @@ const ExpenseScreen = () => {
     };
     loadCustomCategories();
     loadExpenses();
+    const interval = setInterval(loadExpenses, 5000); // Refresh every 5 seconds
+    return () => clearInterval(interval);
   }, [isFocused]);
 
   const loadExpenses = async () => {
@@ -314,6 +324,18 @@ const ExpenseScreen = () => {
     setMenuVisible(false);
   };
 
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setSelectedDate(selectedDate);
+      setDateFilter({
+        ...dateFilter,
+        date: selectedDate.toISOString(),
+        filterType: "date",
+      });
+    }
+  };
+
   const calculateStatistics = () => {
     const today = new Date();
     const thisMonth = today.getMonth();
@@ -346,16 +368,52 @@ const ExpenseScreen = () => {
 
   const statistics = calculateStatistics();
 
+  const [selectedMonth, setSelectedMonth] = useState(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [dateFilter, setDateFilter] = useState({
+    date: new Date().toISOString(),
+    filterType: "all",
+  });
+
+  // const [expandedSections, setExpandedSections] = useState({
+  //   searchFilters: false,
+  //   quickAdd: false,
+  //   categoryManagement: false,
+  //   recurringTransactions: false,
+  // });
+
+  const toggleSection = (section) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
+
   const filteredAndSortedExpenses = expenses
-    .filter(
-      (expense) =>
+    .filter((expense) => {
+      // Text search filter
+      const textMatch =
         (expense.description?.toLowerCase() || "").includes(
           searchQuery.toLowerCase()
         ) ||
         (expense.category?.toLowerCase() || "").includes(
           searchQuery.toLowerCase()
-        )
-    )
+        );
+
+      // Date filter
+      let dateMatch = true;
+      if (dateFilter.filterType === "date" && dateFilter.date) {
+        const expenseDate = new Date(expense.date);
+        const filterDate = new Date(dateFilter.date);
+        dateMatch =
+          expenseDate.getDate() === filterDate.getDate() &&
+          expenseDate.getMonth() === filterDate.getMonth() &&
+          expenseDate.getFullYear() === filterDate.getFullYear();
+      }
+
+      return textMatch && dateMatch;
+    })
     .sort((a, b) => {
       const modifier = sortOrder === "asc" ? 1 : -1;
       if (sortBy === "date") {
@@ -369,147 +427,262 @@ const ExpenseScreen = () => {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
-        <View style={styles.quickAddContainer}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
-            Quick Add
-          </Text>
-          <View>
+        {/* Main Add Expense Section */}
+        <Card style={styles.mainCard}>
+          <Card.Content>
+            <Text variant="titleLarge" style={styles.mainTitle}>
+              Add Expense
+            </Text>
+            <TextInput
+              label="Amount (MMK)"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="numeric"
+              style={styles.input}
+            />
+            <TextInput
+              label="Description"
+              value={description}
+              onChangeText={setDescription}
+              style={styles.input}
+            />
+            <View style={styles.categoriesContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {availableCategories.map((cat, index) => (
+                  <Chip
+                    key={`${cat}-${index}`}
+                    selected={category === cat}
+                    onPress={() => setCategory(cat)}
+                    style={styles.categoryChip}
+                  >
+                    {cat}
+                  </Chip>
+                ))}
+              </ScrollView>
+            </View>
             <Button
-              mode="outlined"
-              onPress={() => {
-                setEditingShortcut(null);
-                setNewShortcut({ amount: "", description: "", category: "" });
-                setShortcutModalVisible(true);
-              }}
-              style={styles.addShortcutButton}
+              mode="contained"
+              onPress={editingExpense ? handleUpdateExpense : handleAddExpense}
+              style={styles.mainButton}
             >
-              Add Quick Shortcut
+              {editingExpense ? "Update Expense" : "Add Expense"}
             </Button>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.shortcutsScroll}
+          </Card.Content>
+        </Card>
+
+        {/* Search and Filter Section */}
+        <Card style={styles.filterCard}>
+          <Card.Content>
+            <TouchableOpacity
+              onPress={() => toggleSection("searchFilters")}
+              style={styles.sectionHeader}
             >
-              {quickAddShortcuts.map((shortcut, index) => (
-                <Card key={shortcut.id} style={styles.shortcutCard}>
-                  <Card.Content>
-                    <Text variant="titleMedium">{shortcut.description}</Text>
-                    <Text variant="bodyMedium">
-                      MMK {shortcut.amount.toLocaleString()}
-                    </Text>
-                    <Text variant="bodySmall">{shortcut.category}</Text>
-                    <View style={styles.usageIndicator}>
-                      <Text variant="bodySmall" style={styles.usageCount}>
-                        Used: {shortcut.usageCount || 0} times
-                      </Text>
-                    </View>
-                  </Card.Content>
-                  <Card.Actions>
-                    <IconButton
-                      icon="pencil"
-                      size={20}
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                Search & Filters
+              </Text>
+              <IconButton
+                icon={
+                  expandedSections.searchFilters ? "chevron-up" : "chevron-down"
+                }
+                size={24}
+              />
+            </TouchableOpacity>
+            {expandedSections.searchFilters && (
+              <>
+                <View style={styles.filterContainer}>
+                  <Searchbar
+                    placeholder="Search expenses"
+                    onChangeText={setSearchQuery}
+                    value={searchQuery}
+                    style={styles.searchBar}
+                  />
+                  <Menu
+                    visible={menuVisible}
+                    onDismiss={() => setMenuVisible(false)}
+                    anchor={
+                      <Button
+                        mode="outlined"
+                        onPress={() => setMenuVisible(true)}
+                        style={styles.sortButton}
+                      >
+                        Sort By
+                      </Button>
+                    }
+                  >
+                    <Menu.Item
+                      onPress={() => handleSort("date")}
+                      title="Date"
+                    />
+                    <Menu.Item
+                      onPress={() => handleSort("amount")}
+                      title="Amount"
+                    />
+                  </Menu>
+                </View>
+                <View style={styles.dateFilterContainer}>
+                  <Button
+                    mode="outlined"
+                    onPress={() => setShowDatePicker(true)}
+                    style={styles.dateFilterButton}
+                  >
+                    {dateFilter.date
+                      ? new Date(dateFilter.date).toLocaleDateString()
+                      : "Select Date"}
+                  </Button>
+                  {dateFilter.date && (
+                    <Button
+                      mode="text"
                       onPress={() => {
-                        setEditingShortcut(shortcut);
-                        setNewShortcut({
-                          amount: shortcut.amount.toString(),
-                          description: shortcut.description,
-                          category: shortcut.category,
-                        });
-                        setShortcutModalVisible(true);
+                        setDateFilter({ date: null, filterType: "all" });
+                        setSelectedDate(null);
                       }}
+                      style={styles.clearDateButton}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={selectedDate || new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={handleDateChange}
                     />
-                    <IconButton
-                      icon="delete"
-                      size={20}
-                      onPress={() => handleDeleteShortcut(shortcut.id)}
-                    />
-                    <IconButton
-                      icon="plus"
-                      size={20}
-                      onPress={() => handleQuickAdd(shortcut)}
-                    />
-                  </Card.Actions>
-                </Card>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
+                  )}
+                </View>
+              </>
+            )}
+          </Card.Content>
+        </Card>
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            label="Amount (MMK)"
-            value={amount}
-            onChangeText={setAmount}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-          <TextInput
-            label="Description"
-            value={description}
-            onChangeText={setDescription}
-            style={styles.input}
-          />
-          <CategoryManager onCategoriesChange={setAvailableCategories} />
-          <View style={styles.categoriesContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {availableCategories.map((cat, index) => (
-                <Chip
-                  key={`${cat}-${index}`}
-                  selected={category === cat}
-                  onPress={() => setCategory(cat)}
-                  style={styles.categoryChip}
+        {/* Quick Add Shortcuts Section */}
+        <Card style={styles.card}>
+          <Card.Content>
+            <TouchableOpacity
+              onPress={() => toggleSection("quickAdd")}
+              style={styles.sectionHeader}
+            >
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                Quick Add Shortcuts
+              </Text>
+              <IconButton
+                icon={expandedSections.quickAdd ? "chevron-up" : "chevron-down"}
+                size={24}
+              />
+            </TouchableOpacity>
+            {expandedSections.quickAdd && (
+              <View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.shortcutsContainer}
                 >
-                  {cat}
-                </Chip>
-              ))}
-            </ScrollView>
-          </View>
-          <Button
-            mode="contained"
-            onPress={editingExpense ? handleUpdateExpense : handleAddExpense}
-            style={styles.button}
-          >
-            {editingExpense ? "Update Expense" : "Add Expense"}
-          </Button>
-        </View>
+                  {quickAddShortcuts.map((shortcut) => (
+                    <Card key={shortcut.id} style={styles.shortcutCard}>
+                      <Card.Content>
+                        <Text>{shortcut.description}</Text>
+                        <Text>MMK {shortcut.amount}</Text>
+                        <Text>{shortcut.category}</Text>
+                        <View style={styles.shortcutActions}>
+                          <IconButton
+                            icon="plus"
+                            size={20}
+                            onPress={() => handleQuickAdd(shortcut)}
+                          />
+                          <IconButton
+                            icon="pencil"
+                            size={20}
+                            onPress={() => {
+                              setEditingShortcut(shortcut);
+                              setNewShortcut({
+                                amount: shortcut.amount.toString(),
+                                description: shortcut.description,
+                                category: shortcut.category,
+                              });
+                              setShortcutModalVisible(true);
+                            }}
+                          />
+                          <IconButton
+                            icon="delete"
+                            size={20}
+                            onPress={() => handleDeleteShortcut(shortcut.id)}
+                          />
+                        </View>
+                      </Card.Content>
+                    </Card>
+                  ))}
+                  <Button
+                    mode="outlined"
+                    onPress={() => {
+                      setEditingShortcut(null);
+                      setNewShortcut({
+                        amount: "",
+                        description: "",
+                        category: "",
+                      });
+                      setShortcutModalVisible(true);
+                    }}
+                    style={styles.addShortcutButton}
+                  >
+                    Add New
+                  </Button>
+                </ScrollView>
+              </View>
+            )}
+          </Card.Content>
+        </Card>
 
-        <View style={styles.filterContainer}>
-          <Searchbar
-            placeholder="Search expenses"
-            onChangeText={setSearchQuery}
-            value={searchQuery}
-            style={styles.searchBar}
-          />
-          <Menu
-            visible={menuVisible}
-            onDismiss={() => setMenuVisible(false)}
-            anchor={
-              <Button
-                mode="outlined"
-                onPress={() => setMenuVisible(true)}
-                style={styles.sortButton}
-              >
-                Sort By
-              </Button>
-            }
-          >
-            <Menu.Item onPress={() => handleSort("date")} title="Date" />
-            <Menu.Item onPress={() => handleSort("amount")} title="Amount" />
-          </Menu>
-        </View>
+        {/* Category Management Section */}
+        <Card style={styles.card}>
+          <Card.Content>
+            <TouchableOpacity
+              onPress={() => toggleSection("categoryManagement")}
+              style={styles.sectionHeader}
+            >
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                Category Management
+              </Text>
+              <IconButton
+                icon={
+                  expandedSections.categoryManagement
+                    ? "chevron-up"
+                    : "chevron-down"
+                }
+                size={24}
+              />
+            </TouchableOpacity>
+            {expandedSections.categoryManagement && (
+              <CategoryManager onCategoriesChange={setAvailableCategories} />
+            )}
+          </Card.Content>
+        </Card>
 
-        <RecurringTransactions
-          onAddRecurring={(recurringTransaction) => {
-            const newExpense = {
-              ...recurringTransaction,
-              date: new Date().toISOString(),
-            };
-            const updatedExpenses = [newExpense, ...expenses];
-            setExpenses(updatedExpenses);
-            saveExpenses(updatedExpenses);
-          }}
-        />
+        {/* Recurring Transactions Section */}
+        <Card style={styles.card}>
+          <Card.Content>
+            <TouchableOpacity
+              onPress={() => toggleSection("recurringTransactions")}
+              style={styles.sectionHeader}
+            >
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                Recurring Transactions
+              </Text>
+              <IconButton
+                icon={
+                  expandedSections.recurringTransactions
+                    ? "chevron-up"
+                    : "chevron-down"
+                }
+                size={24}
+              />
+            </TouchableOpacity>
+            {expandedSections.recurringTransactions && (
+              <RecurringTransactions onAddRecurring={handleAddExpense} />
+            )}
+          </Card.Content>
+        </Card>
 
+        {/* Expenses List */}
         <View style={styles.expensesList}>
           {filteredAndSortedExpenses.map((expense) => (
             <Card key={expense.id} style={styles.expenseCard}>
@@ -537,9 +710,9 @@ const ExpenseScreen = () => {
           ))}
         </View>
 
+        {/* Shortcut Modal */}
         <Portal>
           <Modal
-            animationType="slide"
             visible={shortcutModalVisible}
             onDismiss={() => {
               setShortcutModalVisible(false);
@@ -552,7 +725,6 @@ const ExpenseScreen = () => {
               <Text variant="titleLarge" style={styles.modalTitle}>
                 {editingShortcut ? "Edit Shortcut" : "New Quick Shortcut"}
               </Text>
-
               <TextInput
                 label="Amount (MMK)"
                 value={newShortcut.amount.toString()}
@@ -562,7 +734,6 @@ const ExpenseScreen = () => {
                 keyboardType="numeric"
                 style={styles.input}
               />
-
               <TextInput
                 label="Description"
                 value={newShortcut.description}
@@ -571,7 +742,6 @@ const ExpenseScreen = () => {
                 }
                 style={styles.input}
               />
-
               <View style={styles.categoriesContainer}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {availableCategories.map((cat) => (
@@ -588,7 +758,6 @@ const ExpenseScreen = () => {
                   ))}
                 </ScrollView>
               </View>
-
               <Button
                 mode="contained"
                 onPress={handleSaveShortcut}
@@ -605,8 +774,158 @@ const ExpenseScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 0,
+  },
+  card: {
+    margin: 16,
+    marginTop: 8,
+    elevation: 2,
+  },
+  shortcutsContainer: {
+    flexDirection: "row",
+    marginVertical: 8,
+  },
+  shortcutCard: {
+    marginRight: 8,
+    minWidth: 150,
+  },
+  shortcutActions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 8,
+  },
   addShortcutButton: {
+    alignSelf: "center",
+    marginHorizontal: 8,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  mainCard: {
+    margin: 16,
+    marginBottom: 8,
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  mainTitle: {
+    textAlign: "center",
     marginBottom: 16,
+    color: "#6200ee",
+  },
+  mainButton: {
+    marginTop: 16,
+  },
+  filterCard: {
+    margin: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    elevation: 3,
+  },
+  secondaryCard: {
+    margin: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    elevation: 2,
+  },
+  filterContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  dateFilterContainer: {
+    marginTop: 8,
+  },
+  dateInputContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  dateButton: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  monthButton: {
+    marginTop: 8,
+  },
+  segmentedButtons: {
+    marginBottom: 8,
+  },
+  searchBar: {
+    flex: 1,
+    marginRight: 8,
+    backgroundColor: "#fff",
+  },
+  sortButton: {
+    minWidth: 100,
+  },
+  sectionTitle: {
+    marginBottom: 12,
+  },
+  secondaryButton: {
+    marginBottom: 16,
+  },
+  shortcutsScroll: {
+    flexDirection: "row",
+    marginBottom: 16,
+    paddingBottom: 8,
+  },
+  shortcutCard: {
+    marginRight: 12,
+    minWidth: 160,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    backgroundColor: "#fff",
+    padding: 8,
+  },
+  usageIndicator: {
+    marginTop: 8,
+    backgroundColor: "#f0f0f0",
+    padding: 4,
+    borderRadius: 4,
+  },
+  usageCount: {
+    fontSize: 12,
+    color: "#666",
+    textAlign: "center",
+  },
+  input: {
+    marginBottom: 12,
+  },
+  categoriesContainer: {
+    marginBottom: 12,
+  },
+  categoryChip: {
+    marginRight: 8,
+  },
+  expensesList: {
+    padding: 16,
+    marginBottom: 120,
+  },
+  expenseCard: {
+    marginBottom: 12,
+    borderRadius: 12,
+    elevation: 2,
   },
   modalContainer: {
     backgroundColor: "white",
@@ -621,96 +940,6 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 16,
-  },
-  filterContainer: {
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  searchBar: {
-    flex: 1,
-    marginRight: 8,
-  },
-  sortButton: {
-    minWidth: 100,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  quickAddContainer: {
-    marginBottom: 16,
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 15,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  sectionTitle: {
-    marginBottom: 12,
-  },
-  shortcutsScroll: {
-    flexDirection: "row",
-    marginBottom: 16,
-    paddingBottom: 8,
-  },
-  shortcutCard: {
-    marginRight: 12,
-    minWidth: 160,
-    position: "relative",
-    borderRadius: 12,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
-    backgroundColor: "#fff",
-  },
-  usageIndicator: {
-    marginTop: 8,
-    backgroundColor: "#f0f0f0",
-    padding: 4,
-    borderRadius: 4,
-  },
-  usageCount: {
-    fontSize: 12,
-    color: "#666",
-    textAlign: "center",
-  },
-  inputContainer: {
-    padding: 16,
-    backgroundColor: "#fff",
-    borderRadius: 15,
-    margin: 16,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  input: {
-    marginBottom: 12,
-  },
-  categoriesContainer: {
-    marginBottom: 12,
-  },
-  categoryChip: {
-    marginRight: 8,
-  },
-  button: {
-    marginTop: 8,
-  },
-  expensesList: {
-    padding: 16,
-  },
-  expenseCard: {
-    marginBottom: 12,
   },
 });
 

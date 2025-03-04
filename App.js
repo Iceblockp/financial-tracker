@@ -1,5 +1,6 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
+import { StatusBar } from "expo-status-bar";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import {
   Provider as PaperProvider,
@@ -38,6 +39,7 @@ const { LightTheme } = adaptNavigationTheme({
 export default function App() {
   return (
     <PaperProvider theme={theme}>
+      <StatusBar style="light" />
       <NavigationContainer theme={LightTheme}>
         <Tab.Navigator
           screenOptions={{

@@ -5,9 +5,10 @@ import {
   ScrollView,
   Dimensions,
   Animated,
+  Alert,
 } from "react-native";
 import { Text, Card, Button } from "react-native-paper";
-import { LineChart } from "react-native-chart-kit";
+import { LineChart } from 'react-native-gifted-charts';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 
@@ -35,6 +36,8 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadMonthlyStats();
+    const interval = setInterval(loadMonthlyStats, 5000); // Refresh every 5 seconds
+    return () => clearInterval(interval);
   }, [isFocused]);
 
   const loadMonthlyStats = async () => {
@@ -213,56 +216,49 @@ const HomeScreen = ({ navigation }) => {
               return monthlyStats.spendingData.length > 0 ? (
                 <View style={styles.chartWrapper}>
                   <LineChart
-                    data={{
-                      labels: last7Days.map((date) =>
-                        new Date(date).toLocaleDateString("en-US", {
-                          weekday: "short",
-                        })
-                      ),
-                      datasets: [
-                        {
-                          data: monthlyStats.spendingData.map((val) =>
-                            isFinite(val) ? val : 0
-                          ),
-                          color: (opacity = 1) =>
-                            `rgba(98, 0, 238, ${opacity})`,
-                          strokeWidth: 2,
-                        },
-                      ],
-                    }}
-                    width={Dimensions.get("window").width - 64}
+                    data={monthlyStats.spendingData.map((value, index) => {
+                      const formattedValue = isFinite(value) ? value : 0;
+                      return {
+                        value: formattedValue,
+                        label: new Date(last7Days[index]).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                        }),
+                        dataPointText: formattedValue > 0 ? formattedValue.toLocaleString() : '',
+                      };
+                    })}
+                    width={Dimensions.get('window').width - 64}
                     height={200}
-                    yAxisLabel="MMK "
-                    yAxisSuffix=""
-                    withDots={true}
-                    withInnerLines={false}
-                    withOuterLines={true}
-                    withVerticalLines={false}
-                    withHorizontalLines={true}
-                    withVerticalLabels={true}
-                    withHorizontalLabels={true}
-                    fromZero={true}
-                    chartConfig={{
-                      backgroundColor: "#ffffff",
-                      backgroundGradientFrom: "#ffffff",
-                      backgroundGradientTo: "#ffffff",
-                      decimalPlaces: 0,
-                      color: (opacity = 1) => `rgba(98, 0, 238, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                      style: {
-                        borderRadius: 16,
-                      },
-                      propsForDots: {
-                        r: "6",
-                        strokeWidth: "2",
-                        stroke: "#6200ee",
-                      },
-                      propsForLabels: {
-                        fontSize: 10,
-                      },
+                    hideDataPoints={false}
+                    showDataPointOnPress
+                    color="#6200ee"
+                    thickness={2}
+                    startFillColor="rgba(98, 0, 238, 0.2)"
+                    endFillColor="rgba(98, 0, 238, 0.0)"
+                    initialSpacing={20}
+                    endSpacing={20}
+                    spacing={45}
+                    backgroundColor="#fff"
+                    showVerticalLines
+                    verticalLinesColor="rgba(0,0,0,0.1)"
+                    xAxisColor="rgba(0,0,0,0.3)"
+                    yAxisColor="rgba(0,0,0,0.3)"
+                    yAxisTextStyle={{ color: '#000' }}
+                    xAxisLabelTextStyle={{ color: '#000', fontSize: 8, rotation: 45 }}
+                    maxValue={Math.max(...monthlyStats.spendingData.filter(v => isFinite(v)).map(v => v || 0)) * 1.2 || 1000}
+                    yAxisLabelPrefix="MMK "
+                    yAxisLabelSuffix=""
+                    formatYLabel={(label) => Number(label).toLocaleString()}
+                    curved
+                    pressEnabled
+                    onPress={(item) => {
+                      if (item && isFinite(item.value)) {
+                        Alert.alert(
+                          'Daily Spending',
+                          `Date: ${item.label}\nAmount: MMK ${item.value.toLocaleString()}`,
+                          [{ text: 'OK' }]
+                        );
+                      }
                     }}
-                    bezier
-                    style={styles.chart}
                   />
                 </View>
               ) : (

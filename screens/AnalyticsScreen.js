@@ -2,19 +2,23 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Dimensions } from "react-native";
 import { Text, Card, SegmentedButtons, Button } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LineChart, PieChart } from "react-native-chart-kit";
 import { useIsFocused } from "@react-navigation/native";
+import { LineChart, PieChart } from "react-native-gifted-charts";
 
 const AnalyticsScreen = () => {
   const isFocused = useIsFocused();
   const [expenses, setExpenses] = useState([]);
   const [timeRange, setTimeRange] = useState("month");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [chartType, setChartType] = useState("spending");
   const [comparisonMode, setComparisonMode] = useState("previous");
 
   useEffect(() => {
     if (isFocused) {
       loadExpenses();
+      const interval = setInterval(loadExpenses, 5000); // Refresh every 5 seconds
+      return () => clearInterval(interval);
     }
   }, [isFocused]);
 
@@ -32,16 +36,34 @@ const AnalyticsScreen = () => {
   const getDateRange = () => {
     const now = new Date();
     const ranges = {
-      week: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
-      month: new Date(now.getFullYear(), now.getMonth(), 1),
-      year: new Date(now.getFullYear(), 0, 1),
+      week: (() => {
+        const startOfWeek = new Date();
+        startOfWeek.setHours(0, 0, 0, 0);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+        return startOfWeek;
+      })(),
+      month: new Date(selectedYear, selectedMonth, 1),
+      year: new Date(selectedYear, 0, 1),
     };
     return ranges[timeRange] || ranges.month;
   };
 
   const filterExpensesByDate = () => {
     const startDate = getDateRange();
-    return expenses.filter((expense) => new Date(expense.date) >= startDate);
+    const endDate = new Date(startDate);
+
+    if (timeRange === "month") {
+      endDate.setMonth(endDate.getMonth() + 1);
+    } else if (timeRange === "week") {
+      endDate.setDate(endDate.getDate() + 7);
+    } else {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    }
+
+    return expenses.filter((expense) => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate >= startDate && expenseDate < endDate;
+    });
   };
 
   const calculateDailySpending = () => {
@@ -49,10 +71,58 @@ const AnalyticsScreen = () => {
     const dailyTotals = {};
     const previousPeriodTotals = {};
 
+    // Calculate the number of days to show based on timeRange
+    const daysToShow =
+      timeRange === "week"
+        ? 7
+        : timeRange === "month"
+        ? new Date(selectedYear, selectedMonth + 1, 0).getDate()
+        : 12;
+
+    // Get days for current period
+    const days = Array.from({ length: daysToShow }, (_, i) => {
+      let date;
+      if (timeRange === "week") {
+        date = new Date();
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() - date.getDay() + i);
+      } else if (timeRange === "month") {
+        // For month view, start from the first day of the selected month
+        date = new Date(Date.UTC(selectedYear, selectedMonth, i + 1));
+        // Skip if the date is in a different month (handles month boundaries)
+        if (
+          date.getUTCMonth() !== selectedMonth ||
+          date.getUTCFullYear() !== selectedYear
+        ) {
+          return null;
+        }
+      } else {
+        // For year view, show all 12 months
+        date = new Date(selectedYear, i, 1);
+      }
+      return date.toISOString().split("T")[0];
+    }).filter(Boolean); // Remove any null entries
+
+    // Initialize dailyTotals with 0 for all days
+    days.forEach((date) => {
+      dailyTotals[date] = 0;
+    });
+
     // Current period
     filteredExpenses.forEach((expense) => {
-      const date = new Date(expense.date).toLocaleDateString();
-      dailyTotals[date] = (dailyTotals[date] || 0) + expense.amount;
+      const expenseDate = new Date(expense.date);
+      if (timeRange === "year") {
+        // For year view, aggregate by month
+        const monthKey = new Date(selectedYear, expenseDate.getMonth(), 1).toISOString().split("T")[0];
+        if (expenseDate.getFullYear() === selectedYear) {
+          dailyTotals[monthKey] = (dailyTotals[monthKey] || 0) + expense.amount;
+        }
+      } else {
+        const date = expenseDate.toISOString().split("T")[0];
+        if (days.includes(date)) {
+          dailyTotals[date] = (dailyTotals[date] || 0) + expense.amount;
+        }
+      }
     });
 
     // Previous period
@@ -71,20 +141,23 @@ const AnalyticsScreen = () => {
     });
 
     previousPeriodExpenses.forEach((expense) => {
-      const date = new Date(expense.date).toLocaleDateString();
-      previousPeriodTotals[date] =
-        (previousPeriodTotals[date] || 0) + expense.amount;
+      const date = new Date(expense.date).toISOString().split("T")[0];
+      if (days.includes(date)) {
+        previousPeriodTotals[date] =
+          (previousPeriodTotals[date] || 0) + expense.amount;
+      }
     });
 
-    const labels = Object.keys(dailyTotals).slice(-7);
-    const currentData = labels.map((date) => {
-      const value = dailyTotals[date] || 0;
-      return isFinite(value) ? value : 0;
-    });
-    const previousData = labels.map((date) => {
-      const value = previousPeriodTotals[date] || 0;
-      return isFinite(value) ? value : 0;
-    });
+    const currentData = days.map((date) => dailyTotals[date] || 0);
+    const previousData = days.map((date) => previousPeriodTotals[date] || 0);
+    const labels = days.map((date) =>
+      new Date(date).toLocaleDateString("en-US", {
+        weekday: timeRange === "week" ? "short" : undefined,
+        month: "short",
+        day: "numeric",
+        year: timeRange === "year" ? "numeric" : undefined,
+      })
+    );
 
     return { labels, currentData, previousData };
   };
@@ -125,7 +198,12 @@ const AnalyticsScreen = () => {
     const filteredExpenses = filterExpensesByDate();
     const total = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
     const avgPerDay =
-      total / (timeRange === "week" ? 7 : timeRange === "month" ? 30 : 365);
+      total /
+      (timeRange === "week"
+        ? 7
+        : timeRange === "month"
+        ? new Date(selectedYear, selectedMonth + 1, 0).getDate()
+        : 365);
 
     const categoryTotals = {};
     filteredExpenses.forEach((expense) => {
@@ -147,7 +225,8 @@ const AnalyticsScreen = () => {
   };
 
   const insights = calculateInsights();
-  const { labels, currentData: data } = calculateDailySpending();
+  const { labels = [], currentData: data = [] } =
+    calculateDailySpending() || {};
   const pieData = calculateCategoryDistribution();
 
   return (
@@ -158,16 +237,71 @@ const AnalyticsScreen = () => {
             Expense Analytics
           </Text>
 
-          <SegmentedButtons
-            value={timeRange}
-            onValueChange={setTimeRange}
-            buttons={[
-              { value: "week", label: "Week" },
-              { value: "month", label: "Month" },
-              { value: "year", label: "Year" },
-            ]}
-            style={styles.segmentedButtons}
-          />
+          <View>
+            <SegmentedButtons
+              value={timeRange}
+              onValueChange={setTimeRange}
+              buttons={[
+                { value: "week", label: "Week" },
+                { value: "month", label: "Month" },
+                { value: "year", label: "Year" },
+              ]}
+              style={styles.segmentedButtons}
+            />
+            {timeRange === "month" && (
+              <View style={styles.dateSelector}>
+                <Button
+                  onPress={() => {
+                    const newMonth = selectedMonth - 1;
+                    if (newMonth < 0) {
+                      setSelectedMonth(11);
+                      setSelectedYear(selectedYear - 1);
+                    } else {
+                      setSelectedMonth(newMonth);
+                    }
+                  }}
+                >
+                  Previous
+                </Button>
+                <Text style={styles.dateText}>
+                  {new Date(selectedYear, selectedMonth).toLocaleString(
+                    "default",
+                    { month: "long", year: "numeric" }
+                  )}
+                </Text>
+                <Button
+                  onPress={() => {
+                    const newMonth = selectedMonth + 1;
+                    if (newMonth > 11) {
+                      setSelectedMonth(0);
+                      setSelectedYear(selectedYear + 1);
+                    } else {
+                      setSelectedMonth(newMonth);
+                    }
+                  }}
+                >
+                  Next
+                </Button>
+              </View>
+            )}
+            {timeRange === "year" && (
+              <View style={styles.dateSelector}>
+                <Button
+                  onPress={() => setSelectedYear(selectedYear - 1)}
+                  disabled={selectedYear <= new Date().getFullYear() - 2}
+                >
+                  Previous
+                </Button>
+                <Text style={styles.dateText}>{selectedYear}</Text>
+                <Button
+                  onPress={() => setSelectedYear(selectedYear + 1)}
+                  disabled={selectedYear >= new Date().getFullYear()}
+                >
+                  Next
+                </Button>
+              </View>
+            )}
+          </View>
 
           <View style={styles.insightsContainer}>
             <Text variant="titleMedium" style={styles.insightTitle}>
@@ -212,44 +346,48 @@ const AnalyticsScreen = () => {
             {data.length > 0 ? (
               <View style={styles.chartWrapper}>
                 <LineChart
-                  data={{
-                    labels: labels.length > 0 ? labels : ["No Data"],
-                    datasets: [
-                      {
-                        data: data.map((val) => (isFinite(val) ? val : 0)),
-                      },
-                    ],
-                  }}
+                  key={timeRange} // Add key prop to force re-render on timeRange change
+                  data={data.map((value, index) => ({
+                    value: isFinite(value) ? value : 0,
+                    label: labels[index] || "",
+                    dataPointText: isFinite(value)
+                      ? value.toLocaleString()
+                      : "0",
+                  }))}
                   width={Dimensions.get("window").width - 64}
                   height={220}
-                  chartConfig={{
-                    backgroundColor: "#ffffff",
-                    backgroundGradientFrom: "#ffffff",
-                    backgroundGradientTo: "#ffffff",
-                    decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(54, 162, 235, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                    style: {
-                      borderRadius: 16,
-                    },
-                    propsForDots: {
-                      r: "6",
-                      strokeWidth: "2",
-                      stroke: "#ffa726",
-                    },
-                    propsForLabels: {
-                      fontSize: 10,
-                    },
+                  hideDataPoints={false}
+                  color="#36A2EB"
+                  thickness={2}
+                  startFillColor="rgba(54, 162, 235, 0.2)"
+                  endFillColor="rgba(54, 162, 235, 0.0)"
+                  initialSpacing={20}
+                  endSpacing={20}
+                  spacing={
+                    timeRange === "week" ? 50 : timeRange === "month" ? 30 : 15
+                  }
+                  backgroundColor="#fff"
+                  showVerticalLines
+                  verticalLinesColor="rgba(0,0,0,0.1)"
+                  xAxisColor="rgba(0,0,0,0.3)"
+                  yAxisColor="rgba(0,0,0,0.3)"
+                  yAxisTextStyle={{ color: "#000" }}
+                  xAxisLabelTextStyle={{
+                    color: "#000",
+                    fontSize: 8,
+                    rotation: 45,
                   }}
-                  bezier
-                  style={styles.chart}
-                  withInnerLines={false}
-                  withOuterLines={true}
-                  withVerticalLines={false}
-                  withHorizontalLines={true}
-                  withVerticalLabels={true}
-                  withHorizontalLabels={true}
-                  fromZero
+                  curved
+                  maxValue={
+                    Math.max(...data.map((v) => (isFinite(v) ? v : 0))) * 1.2
+                  }
+                  noDataText="No data available"
+                  yAxisLabelPrefix="MMK "
+                  yAxisLabelSuffix=""
+                  formatYLabel={(label) =>
+                    Math.round(Number(label)).toLocaleString()
+                  }
+                  numberOfYAxisGuideLine={5}
                 />
               </View>
             ) : (
@@ -264,23 +402,68 @@ const AnalyticsScreen = () => {
               Category Distribution
             </Text>
             {pieData && pieData.length > 0 ? (
-              <PieChart
-                data={pieData}
-                width={Dimensions.get("window").width - 64}
-                height={220}
-                chartConfig={{
-                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                }}
-                accessor="amount"
-                backgroundColor="transparent"
-                paddingLeft="15"
-                style={styles.chart}
-                hasLegend={true}
-                center={[Dimensions.get("window").width / 4, 0]}
-              />
+              <>
+                <PieChart
+                  data={pieData.map((item) => {
+                    const totalAmount = pieData.reduce(
+                      (sum, d) => sum + (isFinite(d.amount) ? d.amount : 0),
+                      0
+                    );
+                    const percentage =
+                      totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0;
+                    return {
+                      value: isFinite(item.amount) ? item.amount : 0,
+                      text:
+                        percentage >= 5
+                          ? `${item.name}\n${percentage.toFixed(1)}%`
+                          : "",
+                      color: item.color,
+                      textColor: "#000",
+                      textSize: 12,
+                      shiftTextX: 0,
+                      shiftTextY: 0,
+                      focused: false,
+                    };
+                  })}
+                  donut
+                  showText
+                  textColor="black"
+                  radius={120}
+                  textSize={12}
+                  focusOnPress
+                  showTextBackground
+                  textBackgroundColor="#fff"
+                  textBackgroundRadius={22}
+                  showValuesAsLabels
+                  centerLabelComponent={() => {
+                    const total = pieData.reduce(
+                      (sum, item) =>
+                        sum + (isFinite(item.amount) ? item.amount : 0),
+                      0
+                    );
+                    return (
+                      <View style={{ alignItems: "center" }}>
+                        <Text style={{ fontSize: 16, fontWeight: "bold" }}>
+                          Total
+                        </Text>
+                        <Text style={{ fontSize: 14 }}>
+                          MMK {total.toLocaleString()}
+                        </Text>
+                      </View>
+                    );
+                  }}
+                  labelsPosition="onBorder"
+                  labelType="vertical"
+                  innerCircleColor="#fff"
+                  innerRadius={70}
+                  valueThreshold={5}
+                />
+              </>
             ) : (
               <View style={styles.noDataContainer}>
-                <Text style={styles.noDataText}>No expense data available for this period</Text>
+                <Text style={styles.noDataText}>
+                  No expense data available for this period
+                </Text>
               </View>
             )}
           </View>
@@ -345,9 +528,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   insightValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#6200ee",
+    marginVertical: 4,
+    textAlign: "center",
   },
   insightSubtext: {
     fontSize: 12,
@@ -356,6 +541,15 @@ const styles = StyleSheet.create({
   },
   chartContainer: {
     marginTop: 24,
+    marginBottom: 80,
+    padding: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   chartTitle: {
     marginBottom: 16,
@@ -369,6 +563,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.23,
     shadowRadius: 2.62,
     backgroundColor: "#fff",
+  },
+  dateSelector: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+    paddingHorizontal: 8,
+  },
+  dateText: {
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 
