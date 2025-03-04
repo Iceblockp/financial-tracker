@@ -25,16 +25,11 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.financetracker.app",
-      "versionCode": 1,
       "permissions": []
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "extra": {
-      "eas": {
-        "projectId": "21aa74b1-621f-478d-b06f-7dc2dcdb6f8b"
-      }
-    }
+    "extra": {}
   }
 }
