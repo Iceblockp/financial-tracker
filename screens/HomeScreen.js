@@ -8,7 +8,7 @@ import {
   Alert,
 } from "react-native";
 import { Text, Card, Button } from "react-native-paper";
-import { LineChart } from 'react-native-gifted-charts';
+import { LineChart } from "react-native-gifted-charts";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 
@@ -201,7 +201,7 @@ const HomeScreen = ({ navigation }) => {
           </Card.Content>
         </Card>
 
-        <Card style={styles.chartCard}>
+        {/* <Card style={styles.chartCard}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.chartTitle}>
               Last 7 Days Spending
@@ -268,7 +268,7 @@ const HomeScreen = ({ navigation }) => {
               );
             })()}
           </Card.Content>
-        </Card>
+        </Card> */}
 
         <Card style={styles.recentCard}>
           <Card.Content>
