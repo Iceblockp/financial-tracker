@@ -358,7 +358,7 @@ const AnalyticsScreen = () => {
             <Text variant="titleMedium" style={styles.chartTitle}>
               Spending Trend
             </Text>
-            {data.length > 0 ? (
+            {data?.length > 0 ? (
               <View>
                 <LineChart
                   key={timeRange} // Add key prop to force re-render on timeRange change
@@ -371,6 +371,9 @@ const AnalyticsScreen = () => {
                   }))}
                   width={Dimensions.get("window").width - 64}
                   height={220}
+                  areaChart={true}
+                  startOpacity={0.8}
+                  endOpacity={0.1}
                   hideDataPoints={false}
                   color="#36A2EB"
                   thickness={2}
@@ -390,9 +393,9 @@ const AnalyticsScreen = () => {
                   xAxisLabelTextStyle={{
                     color: "#000",
                     fontSize: 8,
-                    rotation: 45,
                   }}
                   curved
+                  noOfSections={5}
                   maxValue={
                     Math.max(...data.map((v) => (isFinite(v) ? v : 0))) * 1.2
                   }
@@ -401,7 +404,7 @@ const AnalyticsScreen = () => {
                   formatYLabel={(label) =>
                     Math.round(Number(label)).toLocaleString()
                   }
-                  numberOfYAxisGuideLine={5}
+                  // numberOfYAxisGuideLine={5}
                 />
               </View>
             ) : (
