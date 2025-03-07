@@ -411,7 +411,7 @@ const AnalyticsScreen = () => {
             )}
           </View>
 
-          <View style={styles.chartContainer}>
+          {/* <View style={styles.chartContainer}>
             <Text variant="titleMedium" style={styles.chartTitle}>
               Category Distribution
             </Text>
@@ -478,7 +478,7 @@ const AnalyticsScreen = () => {
                 <Text>No expense data available for this period</Text>
               </View>
             )}
-          </View>
+          </View> */}
         </Card.Content>
       </Card>
     </ScrollView>

@@ -259,7 +259,7 @@ const HomeScreen = ({ navigation }) => {
 
               return monthlyStats.spendingData.length > 0 ? (
                 <View>
-                  <LineChart
+                  {/* <LineChart
                     data={monthlyStats.spendingData.map((value, index) => {
                       const formattedValue = isFinite(value) ? value : 0;
                       return {
@@ -320,7 +320,7 @@ const HomeScreen = ({ navigation }) => {
                         );
                       }
                     }}
-                  />
+                  /> */}
                 </View>
               ) : (
                 <View>
