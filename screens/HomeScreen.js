@@ -259,7 +259,7 @@ const HomeScreen = ({ navigation }) => {
 
               return monthlyStats.spendingData.length > 0 ? (
                 <View>
-                  {/* <LineChart
+                  <LineChart
                     data={monthlyStats.spendingData.map((value, index) => {
                       const formattedValue = isFinite(value) ? value : 0;
                       return {
@@ -281,12 +281,16 @@ const HomeScreen = ({ navigation }) => {
                     hideDataPoints={false}
                     showDataPointOnPress
                     color="#6200ee"
+                    areaChart={true}
+                    startOpacity={0.8}
+                    endOpacity={0.1}
                     thickness={1}
                     startFillColor="rgba(98, 0, 238, 0.2)"
                     endFillColor="rgba(98, 0, 238, 0.0)"
                     initialSpacing={20}
                     endSpacing={20}
                     spacing={45}
+                    noOfSections={5}
                     backgroundColor="#fff"
                     showVerticalLines
                     verticalLinesColor="rgba(0,0,0,0.1)"
@@ -296,7 +300,6 @@ const HomeScreen = ({ navigation }) => {
                     xAxisLabelTextStyle={{
                       color: "#000",
                       fontSize: 8,
-                      rotation: 45,
                     }}
                     maxValue={
                       Math.max(
@@ -320,7 +323,7 @@ const HomeScreen = ({ navigation }) => {
                         );
                       }
                     }}
-                  /> */}
+                  />
                 </View>
               ) : (
                 <View>
