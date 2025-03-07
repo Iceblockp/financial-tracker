@@ -25,7 +25,9 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.financetracker.app",
-      "permissions": []
+      "permissions": [],
+      "enableHermes": true,
+      "hardwareAccelerated": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
