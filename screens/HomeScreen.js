@@ -50,49 +50,69 @@ const HomeScreen = ({ navigation }) => {
       const savedBudgets = await AsyncStorage.getItem("budgets");
       const budgets = savedBudgets ? JSON.parse(savedBudgets) : [];
 
-      // Calculate total budget
+      // Validate data types
+      if (!Array.isArray(expenses) || !Array.isArray(budgets)) {
+        throw new Error("Invalid data format");
+      }
+
+      // Calculate total budget with type checking
       const totalBudget = budgets.reduce(
-        (sum, budget) => sum + budget.amount,
+        (sum, budget) =>
+          sum + (typeof budget.amount === "number" ? budget.amount : 0),
         0
       );
 
-      // Filter this month's expenses
+      // Filter this month's expenses with date validation
       const today = new Date();
       const thisMonth = today.getMonth();
       const thisYear = today.getFullYear();
 
       const monthlyExpenses = expenses.filter((expense) => {
-        const expenseDate = new Date(expense.date);
-        return (
-          expenseDate.getMonth() === thisMonth &&
-          expenseDate.getFullYear() === thisYear
-        );
+        try {
+          const expenseDate = new Date(expense.date);
+          if (isNaN(expenseDate.getTime())) return false;
+          return (
+            expenseDate.getMonth() === thisMonth &&
+            expenseDate.getFullYear() === thisYear
+          );
+        } catch (e) {
+          return false;
+        }
       });
 
-      // Calculate statistics
+      // Calculate statistics with type checking
       const totalSpent = monthlyExpenses.reduce(
-        (sum, exp) => sum + exp.amount,
+        (sum, exp) => sum + (typeof exp.amount === "number" ? exp.amount : 0),
         0
       );
       const budgetUsage =
         totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
-      // Get top category
+      // Get top category with type validation
       const categoryTotals = {};
       monthlyExpenses.forEach((expense) => {
-        categoryTotals[expense.category] =
-          (categoryTotals[expense.category] || 0) + expense.amount;
+        if (
+          typeof expense.category === "string" &&
+          typeof expense.amount === "number"
+        ) {
+          categoryTotals[expense.category] =
+            (categoryTotals[expense.category] || 0) + expense.amount;
+        }
       });
       const topCategory =
         Object.entries(categoryTotals).sort(([, a], [, b]) => b - a)[0]?.[0] ||
         "No expenses";
 
-      // Get recent expenses
+      // Get recent expenses with validation
       const recentExpenses = monthlyExpenses
+        .filter(
+          (exp) =>
+            typeof exp.amount === "number" && typeof exp.date === "string"
+        )
         .sort((a, b) => new Date(b.date) - new Date(a.date))
         .slice(0, 3);
 
-      // Get last 7 days spending
+      // Get last 7 days spending with enhanced validation
       const last7Days = Array.from({ length: 7 }, (_, i) => {
         const date = new Date();
         date.setDate(date.getDate() - i);
@@ -100,39 +120,63 @@ const HomeScreen = ({ navigation }) => {
       }).reverse();
 
       const spendingData = last7Days.map((date) => {
-        return expenses
-          .filter((exp) => {
-            const expDate = new Date(exp.date);
-            const targetDate = new Date(date);
-            return (
-              expDate.getFullYear() === targetDate.getFullYear() &&
-              expDate.getMonth() === targetDate.getMonth() &&
-              expDate.getDate() === targetDate.getDate()
+        try {
+          return expenses
+            .filter((exp) => {
+              if (!exp.date || typeof exp.amount !== "number") return false;
+              try {
+                const expDate = new Date(exp.date);
+                const targetDate = new Date(date);
+                return (
+                  expDate.getFullYear() === targetDate.getFullYear() &&
+                  expDate.getMonth() === targetDate.getMonth() &&
+                  expDate.getDate() === targetDate.getDate()
+                );
+              } catch (e) {
+                return false;
+              }
+            })
+            .reduce(
+              (sum, exp) => sum + (isFinite(exp.amount) ? exp.amount : 0),
+              0
             );
-          })
-          .reduce((sum, exp) => sum + exp.amount, 0);
+        } catch (e) {
+          return 0;
+        }
       });
 
-      // Calculate average daily spending
-      const avgDailySpending =
-        totalSpent / new Date(thisYear, thisMonth + 1, 0).getDate();
-
-      // Calculate projected monthly spending
+      // Calculate average daily spending with validation
       const daysInMonth = new Date(thisYear, thisMonth + 1, 0).getDate();
-      const projectedSpending = (avgDailySpending * daysInMonth).toFixed(0);
+      const avgDailySpending = totalSpent / daysInMonth;
+      const projectedSpending = Number(
+        (avgDailySpending * daysInMonth).toFixed(0)
+      );
 
       setMonthlyStats({
-        totalSpent,
-        budgetUsage,
+        totalSpent: isFinite(totalSpent) ? totalSpent : 0,
+        budgetUsage: isFinite(budgetUsage) ? budgetUsage : 0,
         topCategory,
         recentExpenses,
-        spendingData,
-        avgDailySpending,
-        projectedSpending: parseFloat(projectedSpending),
-        totalBudget,
+        spendingData: spendingData.map((value) =>
+          isFinite(value) ? value : 0
+        ),
+        avgDailySpending: isFinite(avgDailySpending) ? avgDailySpending : 0,
+        projectedSpending: isFinite(projectedSpending) ? projectedSpending : 0,
+        totalBudget: isFinite(totalBudget) ? totalBudget : 0,
       });
     } catch (error) {
       console.error("Error loading monthly stats:", error);
+      // Set safe default values in case of error
+      setMonthlyStats({
+        totalSpent: 0,
+        budgetUsage: 0,
+        topCategory: "No data",
+        recentExpenses: [],
+        spendingData: [0, 0, 0, 0, 0, 0, 0],
+        avgDailySpending: 0,
+        projectedSpending: 0,
+        totalBudget: 0,
+      });
     }
   };
 
@@ -201,7 +245,7 @@ const HomeScreen = ({ navigation }) => {
           </Card.Content>
         </Card>
 
-        {/* <Card style={styles.chartCard}>
+        <Card style={styles.chartCard}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.chartTitle}>
               Last 7 Days Spending
@@ -214,24 +258,30 @@ const HomeScreen = ({ navigation }) => {
               }).reverse();
 
               return monthlyStats.spendingData.length > 0 ? (
-                <View style={styles.chartWrapper}>
+                <View>
                   <LineChart
                     data={monthlyStats.spendingData.map((value, index) => {
                       const formattedValue = isFinite(value) ? value : 0;
                       return {
                         value: formattedValue,
-                        label: new Date(last7Days[index]).toLocaleDateString('en-US', {
-                          weekday: 'short',
-                        }),
-                        dataPointText: formattedValue > 0 ? formattedValue.toLocaleString() : '',
+                        label: new Date(last7Days[index]).toLocaleDateString(
+                          "en-US",
+                          {
+                            weekday: "short",
+                          }
+                        ),
+                        dataPointText:
+                          formattedValue > 0
+                            ? formattedValue.toLocaleString()
+                            : "",
                       };
                     })}
-                    width={Dimensions.get('window').width - 64}
+                    width={Dimensions.get("window").width - 64}
                     height={200}
                     hideDataPoints={false}
                     showDataPointOnPress
                     color="#6200ee"
-                    thickness={2}
+                    thickness={1}
                     startFillColor="rgba(98, 0, 238, 0.2)"
                     endFillColor="rgba(98, 0, 238, 0.0)"
                     initialSpacing={20}
@@ -242,10 +292,19 @@ const HomeScreen = ({ navigation }) => {
                     verticalLinesColor="rgba(0,0,0,0.1)"
                     xAxisColor="rgba(0,0,0,0.3)"
                     yAxisColor="rgba(0,0,0,0.3)"
-                    yAxisTextStyle={{ color: '#000' }}
-                    xAxisLabelTextStyle={{ color: '#000', fontSize: 8, rotation: 45 }}
-                    maxValue={Math.max(...monthlyStats.spendingData.filter(v => isFinite(v)).map(v => v || 0)) * 1.2 || 1000}
-                    yAxisLabelPrefix="MMK "
+                    yAxisTextStyle={{ color: "#000", fontSize: 7 }}
+                    xAxisLabelTextStyle={{
+                      color: "#000",
+                      fontSize: 8,
+                      rotation: 45,
+                    }}
+                    maxValue={
+                      Math.max(
+                        ...monthlyStats.spendingData
+                          .filter((v) => isFinite(v))
+                          .map((v) => v || 0)
+                      ) * 1.2 || 1000
+                    }
                     yAxisLabelSuffix=""
                     formatYLabel={(label) => Number(label).toLocaleString()}
                     curved
@@ -253,22 +312,24 @@ const HomeScreen = ({ navigation }) => {
                     onPress={(item) => {
                       if (item && isFinite(item.value)) {
                         Alert.alert(
-                          'Daily Spending',
-                          `Date: ${item.label}\nAmount: MMK ${item.value.toLocaleString()}`,
-                          [{ text: 'OK' }]
+                          "Daily Spending",
+                          `Date: ${
+                            item.label
+                          }\nAmount: MMK ${item.value.toLocaleString()}`,
+                          [{ text: "OK" }]
                         );
                       }
                     }}
                   />
                 </View>
               ) : (
-                <View style={styles.noDataContainer}>
+                <View>
                   <Text>No data available</Text>
                 </View>
               );
             })()}
           </Card.Content>
-        </Card> */}
+        </Card>
 
         <Card style={styles.recentCard}>
           <Card.Content>

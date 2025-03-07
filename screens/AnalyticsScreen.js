@@ -79,85 +79,86 @@ const AnalyticsScreen = () => {
         ? new Date(selectedYear, selectedMonth + 1, 0).getDate()
         : 12;
 
-    // Get days for current period
+    // Get days for current period with validation
     const days = Array.from({ length: daysToShow }, (_, i) => {
       let date;
-      if (timeRange === "week") {
-        date = new Date();
-        date.setHours(0, 0, 0, 0);
-        date.setDate(date.getDate() - date.getDay() + i);
-      } else if (timeRange === "month") {
-        // For month view, start from the first day of the selected month
-        date = new Date(Date.UTC(selectedYear, selectedMonth, i + 1));
-        // Skip if the date is in a different month (handles month boundaries)
-        if (
-          date.getUTCMonth() !== selectedMonth ||
-          date.getUTCFullYear() !== selectedYear
-        ) {
-          return null;
+      try {
+        if (timeRange === "week") {
+          date = new Date();
+          date.setHours(0, 0, 0, 0);
+          date.setDate(date.getDate() - date.getDay() + i);
+        } else if (timeRange === "month") {
+          date = new Date(Date.UTC(selectedYear, selectedMonth, i + 1));
+          if (
+            date.getUTCMonth() !== selectedMonth ||
+            date.getUTCFullYear() !== selectedYear
+          ) {
+            return null;
+          }
+        } else {
+          date = new Date(selectedYear, i, 1);
         }
-      } else {
-        // For year view, show all 12 months
-        date = new Date(selectedYear, i, 1);
+        return date.toISOString().split("T")[0];
+      } catch (e) {
+        console.error("Error creating date:", e);
+        return null;
       }
-      return date.toISOString().split("T")[0];
-    }).filter(Boolean); // Remove any null entries
+    }).filter(Boolean);
 
     // Initialize dailyTotals with 0 for all days
     days.forEach((date) => {
-      dailyTotals[date] = 0;
+      if (date) dailyTotals[date] = 0;
     });
 
-    // Current period
+    // Current period with type checking
     filteredExpenses.forEach((expense) => {
-      const expenseDate = new Date(expense.date);
-      if (timeRange === "year") {
-        // For year view, aggregate by month
-        const monthKey = new Date(selectedYear, expenseDate.getMonth(), 1).toISOString().split("T")[0];
-        if (expenseDate.getFullYear() === selectedYear) {
-          dailyTotals[monthKey] = (dailyTotals[monthKey] || 0) + expense.amount;
+      try {
+        if (!expense.date || typeof expense.amount !== "number") return;
+        const expenseDate = new Date(expense.date);
+        if (isNaN(expenseDate.getTime())) return;
+
+        if (timeRange === "year") {
+          const monthKey = new Date(selectedYear, expenseDate.getMonth(), 1)
+            .toISOString()
+            .split("T")[0];
+          if (expenseDate.getFullYear() === selectedYear) {
+            dailyTotals[monthKey] =
+              (dailyTotals[monthKey] || 0) + expense.amount;
+          }
+        } else {
+          const date = expenseDate.toISOString().split("T")[0];
+          if (days.includes(date)) {
+            dailyTotals[date] = (dailyTotals[date] || 0) + expense.amount;
+          }
         }
-      } else {
-        const date = expenseDate.toISOString().split("T")[0];
-        if (days.includes(date)) {
-          dailyTotals[date] = (dailyTotals[date] || 0) + expense.amount;
-        }
+      } catch (e) {
+        console.error("Error processing expense:", e);
       }
     });
 
-    // Previous period
-    const previousStartDate = new Date(getDateRange());
-    if (timeRange === "week") {
-      previousStartDate.setDate(previousStartDate.getDate() - 7);
-    } else if (timeRange === "month") {
-      previousStartDate.setMonth(previousStartDate.getMonth() - 1);
-    } else {
-      previousStartDate.setFullYear(previousStartDate.getFullYear() - 1);
-    }
-
-    const previousPeriodExpenses = expenses.filter((expense) => {
-      const expenseDate = new Date(expense.date);
-      return expenseDate >= previousStartDate && expenseDate < getDateRange();
+    const currentData = days.map((date) => {
+      const value = dailyTotals[date] || 0;
+      return isFinite(value) ? value : 0;
     });
 
-    previousPeriodExpenses.forEach((expense) => {
-      const date = new Date(expense.date).toISOString().split("T")[0];
-      if (days.includes(date)) {
-        previousPeriodTotals[date] =
-          (previousPeriodTotals[date] || 0) + expense.amount;
+    const previousData = days.map((date) => {
+      const value = previousPeriodTotals[date] || 0;
+      return isFinite(value) ? value : 0;
+    });
+
+    const labels = days.map((date) => {
+      try {
+        return new Date(date).toLocaleDateString("en-US", {
+          weekday: timeRange === "week" ? "short" : undefined,
+          month: "short",
+          day: "numeric",
+          year: timeRange === "year" ? "numeric" : undefined,
+        });
+      } catch (e) {
+        console.error("Error formatting date:", e);
+        return "";
       }
     });
-
-    const currentData = days.map((date) => dailyTotals[date] || 0);
-    const previousData = days.map((date) => previousPeriodTotals[date] || 0);
-    const labels = days.map((date) =>
-      new Date(date).toLocaleDateString("en-US", {
-        weekday: timeRange === "week" ? "short" : undefined,
-        month: "short",
-        day: "numeric",
-        year: timeRange === "year" ? "numeric" : undefined,
-      })
-    );
 
     return { labels, currentData, previousData };
   };
@@ -166,18 +167,32 @@ const AnalyticsScreen = () => {
     const filteredExpenses = filterExpensesByDate();
     const categoryTotals = {};
 
+    // Calculate category totals with type checking
     filteredExpenses.forEach((expense) => {
-      categoryTotals[expense.category] =
-        (categoryTotals[expense.category] || 0) + expense.amount;
+      try {
+        if (
+          typeof expense.category === "string" &&
+          typeof expense.amount === "number" &&
+          isFinite(expense.amount)
+        ) {
+          categoryTotals[expense.category] =
+            (categoryTotals[expense.category] || 0) + expense.amount;
+        }
+      } catch (e) {
+        console.error("Error processing category data:", e);
+      }
     });
 
-    const data = Object.entries(categoryTotals).map(([name, amount]) => ({
-      name,
-      amount,
-      color: getRandomColor(),
-      legendFontColor: "#7F7F7F",
-      legendFontSize: 12,
-    }));
+    // Transform to pie chart data with validation
+    const data = Object.entries(categoryTotals)
+      .filter(([name, amount]) => name && isFinite(amount) && amount > 0)
+      .map(([name, amount]) => ({
+        name,
+        amount,
+        color: getRandomColor(),
+        legendFontColor: "#7F7F7F",
+        legendFontSize: 12,
+      }));
 
     return data;
   };
@@ -344,7 +359,7 @@ const AnalyticsScreen = () => {
               Spending Trend
             </Text>
             {data.length > 0 ? (
-              <View style={styles.chartWrapper}>
+              <View>
                 <LineChart
                   key={timeRange} // Add key prop to force re-render on timeRange change
                   data={data.map((value, index) => ({
@@ -371,7 +386,7 @@ const AnalyticsScreen = () => {
                   verticalLinesColor="rgba(0,0,0,0.1)"
                   xAxisColor="rgba(0,0,0,0.3)"
                   yAxisColor="rgba(0,0,0,0.3)"
-                  yAxisTextStyle={{ color: "#000" }}
+                  yAxisTextStyle={{ color: "#000", fontSize: 7 }}
                   xAxisLabelTextStyle={{
                     color: "#000",
                     fontSize: 8,
@@ -382,7 +397,6 @@ const AnalyticsScreen = () => {
                     Math.max(...data.map((v) => (isFinite(v) ? v : 0))) * 1.2
                   }
                   noDataText="No data available"
-                  yAxisLabelPrefix="MMK "
                   yAxisLabelSuffix=""
                   formatYLabel={(label) =>
                     Math.round(Number(label)).toLocaleString()
@@ -391,7 +405,7 @@ const AnalyticsScreen = () => {
                 />
               </View>
             ) : (
-              <View style={styles.noDataContainer}>
+              <View>
                 <Text>No data available</Text>
               </View>
             )}
@@ -460,10 +474,8 @@ const AnalyticsScreen = () => {
                 />
               </>
             ) : (
-              <View style={styles.noDataContainer}>
-                <Text style={styles.noDataText}>
-                  No expense data available for this period
-                </Text>
+              <View>
+                <Text>No expense data available for this period</Text>
               </View>
             )}
           </View>
