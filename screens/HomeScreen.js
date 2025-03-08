@@ -193,8 +193,8 @@ const HomeScreen = ({ navigation }) => {
 
         <Card style={styles.summaryCard}>
           <Card.Content>
-            <NotificationManager />
-            <View style={styles.divider} />
+            {/* <NotificationManager />
+            <View style={styles.divider} /> */}
             <Text variant="titleLarge" style={styles.cardTitle}>
               Monthly Summary
             </Text>

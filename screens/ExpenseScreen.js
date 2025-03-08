@@ -658,7 +658,7 @@ const ExpenseScreen = () => {
         </Card>
 
         {/* Recurring Transactions Section */}
-        <Card style={styles.card}>
+        {/* <Card style={styles.card}>
           <Card.Content>
             <TouchableOpacity
               onPress={() => toggleSection("recurringTransactions")}
@@ -680,7 +680,7 @@ const ExpenseScreen = () => {
               <RecurringTransactions onAddRecurring={handleAddExpense} />
             )}
           </Card.Content>
-        </Card>
+        </Card> */}
 
         {/* Expenses List */}
         <View style={styles.expensesList}>
