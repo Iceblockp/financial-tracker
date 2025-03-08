@@ -8,6 +8,7 @@ import {
   Alert,
 } from "react-native";
 import { Text, Card, Button } from "react-native-paper";
+import NotificationManager from "../components/NotificationManager";
 import { LineChart } from "react-native-gifted-charts";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
@@ -192,6 +193,8 @@ const HomeScreen = ({ navigation }) => {
 
         <Card style={styles.summaryCard}>
           <Card.Content>
+            <NotificationManager />
+            <View style={styles.divider} />
             <Text variant="titleLarge" style={styles.cardTitle}>
               Monthly Summary
             </Text>
@@ -259,7 +262,7 @@ const HomeScreen = ({ navigation }) => {
 
               return monthlyStats.spendingData.length > 0 ? (
                 <View>
-                  {/* <LineChart
+                  <LineChart
                     data={monthlyStats.spendingData.map((value, index) => {
                       const formattedValue = isFinite(value) ? value : 0;
                       return {
@@ -323,7 +326,7 @@ const HomeScreen = ({ navigation }) => {
                         );
                       }
                     }}
-                  /> */}
+                  />
                 </View>
               ) : (
                 <View>
@@ -338,7 +341,10 @@ const HomeScreen = ({ navigation }) => {
           <Card.Content>
             <View style={styles.recentHeader}>
               <Text variant="titleMedium">Recent Expenses</Text>
-              <Button onPress={() => navigation.navigate("Expenses")}>
+              <Button
+                style={{ width: 100 }}
+                onPress={() => navigation.navigate("Expenses")}
+              >
                 View All
               </Button>
             </View>

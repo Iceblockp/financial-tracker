@@ -431,12 +431,12 @@ const AnalyticsScreen = () => {
                     return {
                       value: isFinite(item.amount) ? item.amount : 0,
                       text:
-                        percentage >= 5
+                        percentage >= 3
                           ? `${item.name}\n${percentage.toFixed(1)}%`
                           : "",
                       color: item.color,
                       textColor: "#000",
-                      textSize: 12,
+                      textSize: 8,
                       shiftTextX: 0,
                       shiftTextY: 0,
                       focused: false,
@@ -446,11 +446,11 @@ const AnalyticsScreen = () => {
                   showText
                   textColor="black"
                   radius={120}
-                  textSize={12}
+                  textSize={8}
                   focusOnPress
                   showTextBackground
-                  textBackgroundColor="#fff"
-                  textBackgroundRadius={22}
+                  textBackgroundColor="#fff222"
+                  textBackgroundRadius={18}
                   showValuesAsLabels
                   centerLabelComponent={() => {
                     const total = pieData.reduce(
