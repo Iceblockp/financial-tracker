@@ -32,6 +32,8 @@ const HomeScreen = ({ navigation }) => {
     avgDailySpending: 0,
     projectedSpending: 0,
     totalBudget: 0,
+    balance: 0,
+    totalIncome: 0,
   });
 
   useEffect(() => {
@@ -42,9 +44,11 @@ const HomeScreen = ({ navigation }) => {
 
   const loadMonthlyStats = async () => {
     try {
-      // Load expenses
+      // Load expenses and incomes
       const savedExpenses = await AsyncStorage.getItem("expenses");
+      const savedIncomes = await AsyncStorage.getItem("incomes");
       const expenses = savedExpenses ? JSON.parse(savedExpenses) : [];
+      const incomes = savedIncomes ? JSON.parse(savedIncomes) : [];
 
       // Load budgets
       const savedBudgets = await AsyncStorage.getItem("budgets");
@@ -85,6 +89,19 @@ const HomeScreen = ({ navigation }) => {
         (sum, exp) => sum + (typeof exp.amount === "number" ? exp.amount : 0),
         0
       );
+      
+      // Calculate total income
+      const totalIncome = incomes.reduce(
+        (sum, income) => sum + (typeof income.amount === "number" ? income.amount : 0),
+        0
+      );
+      
+      // Calculate balance
+      const balance = totalIncome - expenses.reduce(
+        (sum, expense) => sum + (typeof expense.amount === "number" ? expense.amount : 0),
+        0
+      );
+      
       const budgetUsage =
         totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
@@ -163,6 +180,8 @@ const HomeScreen = ({ navigation }) => {
         avgDailySpending: isFinite(avgDailySpending) ? avgDailySpending : 0,
         projectedSpending: isFinite(projectedSpending) ? projectedSpending : 0,
         totalBudget: isFinite(totalBudget) ? totalBudget : 0,
+        balance: isFinite(balance) ? balance : 0,
+        totalIncome: isFinite(totalIncome) ? totalIncome : 0
       });
     } catch (error) {
       console.error("Error loading monthly stats:", error);
@@ -182,6 +201,26 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <Card style={styles.card}>
+        <Card.Content>
+          <View style={styles.balanceContainer}>
+            <Text variant="titleLarge" style={styles.balanceTitle}>Current Balance</Text>
+            <Text variant="headlineLarge" style={styles.balanceAmount}>
+              MMK {monthlyStats.balance.toLocaleString()}
+            </Text>
+          </View>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text variant="titleMedium">Total Income</Text>
+              <Text variant="bodyLarge">MMK {monthlyStats.totalIncome.toLocaleString()}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text variant="titleMedium">Total Expenses</Text>
+              <Text variant="bodyLarge">MMK {monthlyStats.totalSpent.toLocaleString()}</Text>
+            </View>
+          </View>
+        </Card.Content>
+      </Card>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         <View style={styles.header}>
           <Text variant="headlineMedium">Finance Tracker</Text>
@@ -371,7 +410,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f0f2f5",
+    paddingTop: 8,
   },
   header: {
     padding: 24,
@@ -383,22 +423,50 @@ const styles = StyleSheet.create({
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  card: {
+    margin: 16,
+    elevation: 4,
+    borderRadius: 20,
+    backgroundColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  balanceContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  balanceTitle: {
+    color: '#666',
+    marginBottom: 8,
+  },
+  balanceAmount: {
+    color: '#2c3e50',
+    fontWeight: 'bold',
   },
   summaryCard: {
     margin: 16,
     marginTop: 0,
     elevation: 4,
-    borderRadius: 15,
+    borderRadius: 20,
     backgroundColor: "#fff",
+    borderLeftWidth: 4,
+    borderLeftColor: "#6200ee",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   cardTitle: {
-    marginBottom: 8,
+    marginBottom: 12,
+    color: '#2c3e50',
   },
   amount: {
     color: "#6200ee",
@@ -408,6 +476,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     marginTop: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    padding: 12,
   },
   statItem: {
     alignItems: "center",
@@ -416,15 +487,17 @@ const styles = StyleSheet.create({
     margin: 16,
     marginTop: 0,
     elevation: 4,
-    borderRadius: 15,
+    borderRadius: 20,
     backgroundColor: "#fff",
+    padding: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   chartTitle: {
     marginBottom: 16,
+    color: '#2c3e50',
   },
   chart: {
     marginVertical: 8,
@@ -434,27 +507,36 @@ const styles = StyleSheet.create({
     margin: 16,
     marginTop: 0,
     elevation: 4,
-    borderRadius: 15,
+    borderRadius: 20,
     backgroundColor: "#fff",
+    borderLeftWidth: 4,
+    borderLeftColor: "#FF5252",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   recentHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   expenseItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
+    borderBottomColor: "#f0f0f0",
+    paddingHorizontal: 4,
   },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 16,
+  }
 });
 
 export default HomeScreen;

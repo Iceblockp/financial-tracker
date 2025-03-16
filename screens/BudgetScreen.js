@@ -514,7 +514,7 @@ const BudgetScreen = () => {
                   ).toLocaleString()}
                 </Text>
                 <ProgressBar
-                  progress={(budget.spent || 0) / (budget.amount || 1)}
+                  progress={Math.min((budget.spent || 0) / (budget.amount || 1), 1)}
                   color={getProgressColor(
                     budget.spent || 0,
                     budget.amount || 0
@@ -671,47 +671,84 @@ const renderBudgetCard = (budget) => {
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#f0f2f5",
+    paddingTop: 8,
+  },
   monthSelectorCard: {
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 8,
+    backgroundColor: "#ffffff",
+    elevation: 2,
+    borderRadius: 15,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   monthSelector: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    padding: 8,
   },
   budgetCard: {
     marginHorizontal: 16,
     marginVertical: 8,
+    backgroundColor: "#ffffff",
+    borderRadius: 15,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: "#6200ee",
   },
   budgetHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 12,
+    paddingVertical: 4,
   },
   progressBar: {
     height: 8,
     borderRadius: 4,
+    marginVertical: 12,
   },
   budgetDetails: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 8,
+    backgroundColor: "#f8f9fa",
+    padding: 8,
+    borderRadius: 8,
   },
   historySection: {
     marginTop: 16,
     borderTopWidth: 1,
     borderTopColor: "#e0e0e0",
-    paddingTop: 8,
+    paddingTop: 12,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
   },
   historyTitle: {
     fontWeight: "bold",
-    marginBottom: 4,
+    marginBottom: 8,
+    color: "#1a1a1a",
   },
   historyItem: {
-    marginVertical: 2,
-    color: "#666",
+    marginVertical: 4,
+    color: "#4a4a4a",
+    paddingHorizontal: 4,
   },
   recommendationsCard: {
     margin: 16,
