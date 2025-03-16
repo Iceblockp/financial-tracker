@@ -7,6 +7,7 @@ import {
   Card,
   ProgressBar,
   Chip,
+  IconButton,
 } from "react-native-paper";
 import CategoryManager from "../components/CategoryManager";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -19,6 +20,8 @@ const BudgetScreen = () => {
   const [budgets, setBudgets] = useState([]);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [recommendations, setRecommendations] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const [availableCategories, setAvailableCategories] = useState([
     "Food",
@@ -35,7 +38,7 @@ const BudgetScreen = () => {
       checkExpensesChanges();
       loadRecommendations();
     }
-  }, [isFocused]);
+  }, [isFocused, selectedMonth, selectedYear]);
 
   const loadRecommendations = async () => {
     const recommendations = await calculateBudgetRecommendations();
@@ -129,13 +132,41 @@ const BudgetScreen = () => {
         }
 
         const updatedBudgets = currentBudgets.map((budget) => {
-          const categoryExpenses = expenses.filter(
-            (expense) => expense.category === budget.category
-          );
+          // Calculate current month's spending first
+          const categoryExpenses = expenses.filter((expense) => {
+            const expenseDate = new Date(expense.date);
+            return (
+              expense.category === budget.category &&
+              expenseDate.getMonth() === selectedMonth &&
+              expenseDate.getFullYear() === selectedYear
+            );
+          });
+
           const totalSpent = categoryExpenses.reduce(
             (sum, expense) => sum + expense.amount,
             0
           );
+
+          // Check if we need to reset the monthly budget
+          if (budget.month !== selectedMonth || budget.year !== selectedYear) {
+            // Store the previous month's data in history
+            const historyEntry = {
+              month: budget.month,
+              year: budget.year,
+              amount: budget.amount,
+              spent: budget.spent,
+            };
+
+            // Reset the budget for the new month but keep the calculated spending
+            return {
+              ...budget,
+              month: selectedMonth,
+              year: selectedYear,
+              spent: totalSpent,
+              alertShown: false,
+              history: [...(budget.history || []), historyEntry],
+            };
+          }
 
           // Check if spending exceeds budget thresholds
           const spendingRatio = totalSpent / budget.amount;
@@ -164,17 +195,46 @@ const BudgetScreen = () => {
       if (savedBudgets) {
         const parsedBudgets = JSON.parse(savedBudgets);
         if (Array.isArray(parsedBudgets)) {
-          setBudgets(parsedBudgets);
-        } else {
-          console.error("Invalid budget data format");
-          setBudgets([]);
+          // Filter budgets for selected month/year or get from history
+          const filteredBudgets = parsedBudgets.map((budget) => {
+            // Check if the budget is for the selected month/year
+            if (
+              budget.month === selectedMonth &&
+              budget.year === selectedYear
+            ) {
+              return budget;
+            }
+
+            // Look for historical data
+            const historicalEntry = budget.history?.find(
+              (entry) =>
+                entry.month === selectedMonth && entry.year === selectedYear
+            );
+
+            if (historicalEntry) {
+              return {
+                ...budget,
+                amount: historicalEntry.amount,
+                spent: historicalEntry.spent,
+                month: historicalEntry.month,
+                year: historicalEntry.year,
+              };
+            }
+
+            // If no historical data, return budget with zero spent
+            return {
+              ...budget,
+              month: selectedMonth,
+              year: selectedYear,
+              spent: 0,
+            };
+          });
+
+          setBudgets(filteredBudgets);
         }
       }
     } catch (error) {
       console.error("Error loading budgets:", error);
-      Alert.alert("Error", "Failed to load budgets. Please try again.", [
-        { text: "OK" },
-      ]);
     }
   };
 
@@ -234,11 +294,15 @@ const BudgetScreen = () => {
         return;
       }
 
+      const now = new Date();
       const newBudget = {
         id: Date.now().toString(),
         amount: parseFloat(amount),
         category,
         spent: 0,
+        month: now.getMonth(),
+        year: now.getFullYear(),
+        history: [],
         date: new Date().toISOString(),
       };
       const updatedBudgets = [newBudget, ...budgets];
@@ -293,9 +357,61 @@ const BudgetScreen = () => {
 
   const summary = calculateBudgetSummary();
 
+  const handleMonthChange = (increment) => {
+    let newMonth = selectedMonth + increment;
+    let newYear = selectedYear;
+
+    if (newMonth > 11) {
+      newMonth = 0;
+      newYear++;
+    } else if (newMonth < 0) {
+      newMonth = 11;
+      newYear--;
+    }
+
+    setSelectedMonth(newMonth);
+    setSelectedYear(newYear);
+    loadBudgets();
+  };
+
+  const getMonthName = (month) => {
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    return months[month];
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
+        <Card style={styles.monthSelectorCard}>
+          <Card.Content>
+            <View style={styles.monthSelector}>
+              <IconButton
+                icon="chevron-left"
+                onPress={() => handleMonthChange(-1)}
+              />
+              <Text variant="titleLarge">
+                {getMonthName(selectedMonth)} {selectedYear}
+              </Text>
+              <IconButton
+                icon="chevron-right"
+                onPress={() => handleMonthChange(1)}
+              />
+            </View>
+          </Card.Content>
+        </Card>
         <Card style={styles.summaryCard}>
           <Card.Content>
             <Text variant="titleLarge" style={styles.summaryTitle}>
@@ -487,7 +603,116 @@ const BudgetScreen = () => {
   );
 };
 
+export default BudgetScreen;
+
+const renderBudgetCard = (budget) => {
+  const progress = budget.amount > 0 ? budget.spent / budget.amount : 0;
+  const remaining = budget.amount - budget.spent;
+  const isOverBudget = remaining < 0;
+
+  // Get historical performance
+  const historicalPerformance =
+    budget.history
+      ?.map((entry) => ({
+        month: getMonthName(entry.month),
+        year: entry.year,
+        spent: entry.spent,
+        amount: entry.amount,
+        percentage: ((entry.spent / entry.amount) * 100).toFixed(1),
+      }))
+      .slice(-3) || [];
+
+  return (
+    <Card key={budget.category} style={styles.budgetCard}>
+      <Card.Content>
+        <View style={styles.budgetHeader}>
+          <Text variant="titleMedium">{budget.category}</Text>
+          <Text variant="titleMedium">
+            MMK {budget.amount.toLocaleString()}
+          </Text>
+        </View>
+
+        <ProgressBar
+          progress={Math.min(progress, 1)}
+          color={isOverBudget ? "#B00020" : "#6200ee"}
+          style={styles.progressBar}
+        />
+
+        <View style={styles.budgetDetails}>
+          <Text variant="bodyMedium">
+            Spent: MMK {budget.spent.toLocaleString()}
+          </Text>
+          <Text
+            variant="bodyMedium"
+            style={{ color: isOverBudget ? "#B00020" : "#6200ee" }}
+          >
+            {isOverBudget ? "Over by" : "Remaining"}: MMK{" "}
+            {Math.abs(remaining).toLocaleString()}
+          </Text>
+        </View>
+
+        {historicalPerformance.length > 0 && (
+          <View style={styles.historySection}>
+            <Text variant="bodySmall" style={styles.historyTitle}>
+              Recent History:
+            </Text>
+            {historicalPerformance.map((entry, index) => (
+              <Text key={index} variant="bodySmall" style={styles.historyItem}>
+                {entry.month} {entry.year}: {entry.percentage}% used (MMK{" "}
+                {entry.spent.toLocaleString()} / {entry.amount.toLocaleString()}
+                )
+              </Text>
+            ))}
+          </View>
+        )}
+      </Card.Content>
+    </Card>
+  );
+};
+
 const styles = StyleSheet.create({
+  monthSelectorCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  monthSelector: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  budgetCard: {
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  budgetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+  },
+  budgetDetails: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  historySection: {
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+    paddingTop: 8,
+  },
+  historyTitle: {
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  historyItem: {
+    marginVertical: 2,
+    color: "#666",
+  },
   recommendationsCard: {
     margin: 16,
     marginBottom: 80,
@@ -610,5 +835,3 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 });
-
-export default BudgetScreen;

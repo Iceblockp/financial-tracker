@@ -20,7 +20,6 @@ import {
   SegmentedButtons,
 } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import RecurringTransactions from "../components/RecurringTransactions";
 import CategoryManager from "../components/CategoryManager";
 import { useIsFocused } from "@react-navigation/native";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -40,7 +39,6 @@ const ExpenseScreen = () => {
     searchFilters: false,
     quickAdd: false,
     categoryManagement: false,
-    recurringTransactions: false,
   });
 
   const [availableCategories, setAvailableCategories] = useState([
@@ -656,31 +654,6 @@ const ExpenseScreen = () => {
             )}
           </Card.Content>
         </Card>
-
-        {/* Recurring Transactions Section */}
-        {/* <Card style={styles.card}>
-          <Card.Content>
-            <TouchableOpacity
-              onPress={() => toggleSection("recurringTransactions")}
-              style={styles.sectionHeader}
-            >
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                Recurring Transactions
-              </Text>
-              <IconButton
-                icon={
-                  expandedSections.recurringTransactions
-                    ? "chevron-up"
-                    : "chevron-down"
-                }
-                size={24}
-              />
-            </TouchableOpacity>
-            {expandedSections.recurringTransactions && (
-              <RecurringTransactions onAddRecurring={handleAddExpense} />
-            )}
-          </Card.Content>
-        </Card> */}
 
         {/* Expenses List */}
         <View style={styles.expensesList}>

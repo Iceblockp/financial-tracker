@@ -8,7 +8,6 @@ import {
   Alert,
 } from "react-native";
 import { Text, Card, Button } from "react-native-paper";
-import NotificationManager from "../components/NotificationManager";
 import { LineChart } from "react-native-gifted-charts";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
@@ -193,8 +192,7 @@ const HomeScreen = ({ navigation }) => {
 
         <Card style={styles.summaryCard}>
           <Card.Content>
-            {/* <NotificationManager />
-            <View style={styles.divider} /> */}
+            <View style={styles.divider} />
             <Text variant="titleLarge" style={styles.cardTitle}>
               Monthly Summary
             </Text>
